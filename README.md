@@ -17,8 +17,9 @@ unchanged from the [DUBURI simulator](https://github.com/jarifalamclaude-max/sim
 
 * **Offline, no install:** download [`dist/life-as-duburi.html`](dist/life-as-duburi.html) and
   double-click it. Everything (code, textures, logo, sound) is inside that one file.
-* **On GitHub Pages:** in *Settings → Pages* choose branch `main`, folder `/docs`; the game is
-  then at `https://jarifalamclaude-max.github.io/LIFE_AS_DUBURI/`.
+* **On GitHub Pages:** in the repository's *Settings → Pages* choose branch `main`, folder
+  `/docs`; the game is then at `https://<owner>.github.io/<repository>/`, for example
+  `https://jarifalamclaude-max.github.io/Life_in_DUBURI/`.
 
 Chrome, Edge or Firefox with WebGL2. Gamepads (PlayStation / Xbox) work in Chrome and Edge.
 If a laptop struggles, set *Graphics* to Medium or Low in the pause menu.
