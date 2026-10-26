@@ -71,7 +71,7 @@ Arctic than in the pool, and current, turbulence and waves really push you aroun
 * Post-processing on every split-screen view: bloom, underwater colour absorption that gets
   stronger with depth and murk, refraction wobble, vignette, chromatic aberration, film grain.
 * Sun shadows, image-based reflections on metal and acrylic, caustics on the floor, god rays,
-  thruster bubbles that rise and pop at the surface, marine snow, fish, kelp and ice.
+  thruster bubbles that rise and pop at the surface, marine snow, coral, fish, jellyfish and sea ice.
 * Synthesised underwater sound: each thruster's blade-pass hum and motor whine follow its real
   rpm, prop wash and cavitation, muffled water acoustics with a dark room echo, bubbles and
   ambience, hydrophone pings from the pingers, splashes, thuds and gripper servos. Other
@@ -102,14 +102,16 @@ bin or torpedo + octagon surface.
 
 ![Pause menu](screenshots/pause.jpg)
 
-Each player has their own pause menu (**Options / Menu**, **Tab** or **Backspace**; **Esc** for
-player 1), driven with their own controller:
+Next to the clock there are always two buttons: **⏸ Pause** and **✕ Quit match** (it asks
+before quitting). Each player also has their own pause menu (**Options / Menu**, **Tab** or
+**Backspace**; **Esc** for player 1), driven with their own controller:
 
+* **Quit match** — the match ends and everyone goes back to the lobby.
 * **Skip task** — no points for it; you are moved to the start of the next task.
 * **End run** — stop here and keep the points.
 * **Forfeit run** — lose this run's points and start again from the dock.
 * **Leave match** — you drop out, the others keep playing and the screen re-splits.
-* **Restart match** / **Quit to main menu**.
+* **Restart match** — same players, same water, from the start.
 
 ## Controls — see them, change them
 
@@ -224,7 +226,7 @@ screenshots/    pictures for this README
 
 | File | What it is for |
 |---|---|
-| `scenery.js` | The water world: surface and waves, floor and caustics, pool walls, coral, kelp, ice, fish, particles, light rays, fog. |
+| `scenery.js` | The water world: surface and waves, floor and caustics, pool walls, coral, ice, fish, jellyfish, particles, light rays, fog. |
 | `course3d.js` | 3D models of the course elements. |
 | `bots3d.js` | 3D models of the five vehicles (spinning props, gripper, markers, torpedoes) and of the payload items. |
 | `art.js` | Loads the animal pictures as textures. |
