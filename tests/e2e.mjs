@@ -18,10 +18,13 @@ const url = pathToFileURL(process.env.GAME_HTML || join(here, '../dist/life-as-d
 
 const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'] });
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
+page.setDefaultTimeout(180000);
 const errors = [];
 page.on('pageerror', (e) => errors.push(`pageerror: ${e.message}`));
 page.on('console', (m) => { if (m.type() === 'error' && !/fonts\.g|ERR_|net::/.test(m.text())) errors.push(`console: ${m.text()}`); });
-const shot = (n) => page.screenshot({ path: join(out, `${n}.png`) });
+const shot = (n) => page.screenshot({ path: join(out, `${n}.png`), timeout: 180000 });
+// software rendering in CI is slow: multi-view parts run at the Low preset
+const quality = (q) => page.evaluate((q) => { const a = window.__duburi; a.quality = q; a.applyQuality(); }, q);
 const wait = (ms) => page.waitForTimeout(ms);
 const results = [];
 // hold keys for a span of *game* time (software rendering in CI is slow)
@@ -79,6 +82,7 @@ for (const sc of ['pool', 'pacific', 'arctic', 'atlantic']) {
 }
 
 // --- every vehicle visible: 4 CPU vehicles + 1 viewer ---
+await quality('medium');
 await setup([{ type: 'kbA', bot: 'duburi' }, { type: 'cpu', bot: 'barracuda' }, { type: 'cpu', bot: 'kraken' }, { type: 'cpu', bot: 'manta' }], 'pool');
 await page.evaluate(() => { const a = window.__duburi; a.cams[0] = 'chase'; const p = a.game.players[0]; p.veh.reset([-18.5, -1.2, 1.4], 0.4); p.veh.depthTarget = 1.4; });
 await waitSim(6);
@@ -87,6 +91,7 @@ results.push({ test: '1P + 3 CPU', fps: +(await fps()).toFixed(1), ...(await sta
 await toMenu();
 
 // --- four local players split screen ---
+await quality('low');
 await setup([{ type: 'kbA', bot: 'duburi' }, { type: 'kbB', bot: 'barracuda' }, { type: 'pad0', bot: 'kraken' }, { type: 'pad1', bot: 'dubomini' }], 'pacific');
 await holdSim(['KeyF', 'KeyK'], 2.0);
 await holdSim(['KeyW', 'ArrowUp', 'KeyD', 'ArrowRight'], 1.5);
@@ -111,6 +116,7 @@ await shot('40-results');
 results.push({ test: 'CPU full run (Atlantic)', ...(await state()) });
 
 // --- pause menu: skip a task from the menu (keyboard navigation) ---
+await quality('high');
 await page.click('[data-a=again]');
 await page.waitForSelector('.hud');
 await wait(800);
@@ -127,6 +133,7 @@ if (sk.paused || sk.task !== 'slalom' || !sk.skipped.includes('gate')) errors.pu
 await toMenu();
 
 // --- lobby: join with the keyboards, then one player leaves mid-match ---
+await quality('low');
 await page.evaluate(() => { const m = window.__duburi.menu; m.setup.slots.forEach((s) => (s.type = 'off')); m.show('setup'); });
 await wait(300);
 await page.keyboard.press('Space'); // left keyboard joins
