@@ -7,7 +7,9 @@
     "test": "node --test tests/*.test.mjs",
     "build": "node build.mjs",
     "build:wasm": "node tools/build-wasm.mjs",
-    "validate:cfd": "node tools/validate-cfd.mjs"
+    "validate:cfd": "node tools/validate-cfd.mjs",
+    "build:game": "node game/build.mjs",
+    "test:game": "node --test game/tests/*.test.mjs"
   },
   "keywords": [],
   "author": "Team DUBURI",
