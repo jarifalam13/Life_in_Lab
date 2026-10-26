@@ -50,10 +50,10 @@ thrusters and drag, not typed in.
 
 ## Water
 
-| Swimming pool | Pacific Ocean | Arctic Ocean | Atlantic Ocean |
-|---|---|---|---|
-| ![](screenshots/pool.jpg) | ![](screenshots/pacific.jpg) | ![](screenshots/arctic.jpg) | ![](screenshots/atlantic.jpg) |
-| 7 m deep, 26 °C fresh water, tiled pool | 12 m, 22 °C reef lagoon, sand and coral, swell | 15 m, −1.5 °C under the sea ice, marine snow | 10 m, 12 °C, green and murky, kelp, 0.17 m/s current |
+| Swimming pool | Pacific Ocean | Arctic Ocean |
+|---|---|---|
+| ![](screenshots/pool.jpg) | ![](screenshots/pacific.jpg) | ![](screenshots/arctic.jpg) |
+| 7 m deep, 26 °C fresh water, tiled pool | 12 m, 22 °C reef lagoon, sand and coral, swell | 15 m, −1.5 °C under the sea ice, marine snow |
 
 Depth can also be set to 5–20 m in the lobby. The water is physical, not just a look: density
 comes from temperature and salinity (EOS-80), so the same vehicle is ~3 % more buoyant in the
@@ -209,7 +209,7 @@ screenshots/    pictures for this README
 | `bots.js` | The five vehicles: Duburi, Dubo Mini, Barracuda, Kraken, Manta — mass, size, drag, thruster layout. |
 | `course.js` | Where every course element is (gate, path markers, slalom, bin, torpedo board, octagon, pingers, dock) and its sizes. |
 | `collide.js` | Collisions of vehicles with the course, the floor, the walls and each other. |
-| `scenarios.js` | The four waters (pool, Pacific, Arctic, Atlantic): temperature, salinity, current, waves, depth, colours. |
+| `scenarios.js` | The three waters (pool, Pacific, Arctic): temperature, salinity, current, waves, depth, colours. |
 | `autopilot.js` | CPU opponent: flies the whole course with the same controls a player uses. |
 | `stats.js` | Speed, turn rate, axes and buoyancy shown in the lobby, worked out from the physics. |
 

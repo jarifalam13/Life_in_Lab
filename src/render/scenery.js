@@ -1,4 +1,4 @@
-// Environment scenery for the four scenarios (pool / pacific / arctic / atlantic):
+// Environment scenery for the water scenarios (pool / pacific / arctic):
 // lights, wave-following water surface, caustic floor, walls or seabed, life,
 // particles, god rays, arena buoy line and the DUBURI logo banners / sign.
 // three.js world = (east, up, south); water surface at Y = 0, arena floor at Y = -depth.

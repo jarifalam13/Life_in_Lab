@@ -12,13 +12,18 @@ const fmtTime = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padSt
 const deg = (r) => ((r * 180) / Math.PI + 360) % 360;
 
 export class HUD {
-  constructor(root, game, { logoUrl, cams }) {
+  constructor(root, game, { logoUrl, cams, onPause, onQuit }) {
     this.game = game;
     this.cams = cams;
     this.root = h('div', 'hud');
     root.appendChild(this.root);
     this.top = h('div', 'hud-clock');
     this.top.innerHTML = `${logoUrl ? `<img src="${logoUrl}" alt="DUBURI">` : ''}<div><b class="clock">15:00</b><span>${SCENARIOS[game.scenario].name} · ${game.depth} m deep</span></div>`;
+    // always-visible match buttons (mouse); pads and keys use the pause menu
+    const bar = h('div', 'hud-btns', '<button class="hb" data-hb="pause" title="Pause (Esc / Options)">⏸ Pause</button><button class="hb quit" data-hb="quit" title="Quit the match">✕ Quit match</button>');
+    bar.querySelector('[data-hb=pause]').onclick = () => onPause?.();
+    bar.querySelector('[data-hb=quit]').onclick = () => onQuit?.();
+    this.top.appendChild(bar);
     // leaderboard for the TV-camera quarter (3 players)
     this.board = h('div', 'lboard');
     this.board.hidden = true;

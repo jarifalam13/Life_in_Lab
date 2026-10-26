@@ -266,3 +266,9 @@ table.results .dot { display: inline-block; width: 10px; height: 10px; border-ra
 .pp.small .qcard { width: 92%; padding: 4px 8px; }
 .pp.tiny .qcard { display: none; }
 .pad-label.dim { fill: var(--mut); font-size: 12px; }
+.hud-btns { display: flex; flex-direction: column; gap: 4px; margin-left: 6px; pointer-events: auto; }
+.hb { pointer-events: auto; background: rgba(255, 255, 255, 0.1); border: 1px solid var(--line); color: var(--text); border-radius: 6px; padding: 3px 9px; font: 600 12px var(--font); cursor: pointer; white-space: nowrap; }
+.hb:hover { background: rgba(255, 255, 255, 0.22); }
+.hb.quit { color: #ffb3b3; border-color: rgba(255, 93, 93, 0.5); }
+.hb.quit:hover { background: rgba(255, 93, 93, 0.3); color: #fff; }
+.hud-clock { pointer-events: auto; }

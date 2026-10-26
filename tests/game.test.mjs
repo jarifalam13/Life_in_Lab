@@ -33,10 +33,10 @@ test('cold salt water is denser, so the same vehicle is more buoyant (EOS-80)', 
   assert.ok(b.arctic - b.pool > 2, 'about 3% more buoyancy than in the pool');
 });
 
-test('current pushes an idle vehicle downstream in the Atlantic, not in the pool', () => {
+test('current pushes an idle vehicle downstream in the Pacific, not in the pool', () => {
   const drift = (sc) => { const g = solo({ scenario: sc }); const v = g.players[0].veh; v.depthTarget = 2; run(g, 3); const y0 = v.p[1]; run(g, 10); return v.p[1] - y0; };
   assert.ok(Math.abs(drift('pool')) < 0.1);
-  assert.ok(drift('atlantic') > 0.5);
+  assert.ok(drift('pacific') > 0.3);
 });
 
 test('roll input flips the vehicle and the stabiliser levels it again', () => {
@@ -137,7 +137,7 @@ test('four vehicles in the same water: every one finishes in each scenario', () 
 });
 
 test('every water has its own depth; the floor tasks follow it', () => {
-  for (const [sc, d] of [['pool', 7], ['pacific', 12], ['arctic', 15], ['atlantic', 10]]) {
+  for (const [sc, d] of [['pool', 7], ['pacific', 12], ['arctic', 15]]) {
     const g = new Game({ scenario: sc, players: [{ bot: 'duburi' }], seed: 2 });
     assert.equal(g.course.floor, d);
     assert.ok(Math.abs(g.course.board.depth - (d - 1.6)) < 1e-9);

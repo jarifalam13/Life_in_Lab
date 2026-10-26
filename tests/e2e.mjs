@@ -65,7 +65,7 @@ const state = () => page.evaluate(() => { const g = window.__duburi.game; return
 const toMenu = () => page.evaluate(() => window.__duburi.toMenu());
 
 // --- single player, keyboard, each scenario ---
-for (const sc of ['pool', 'pacific', 'arctic', 'atlantic']) {
+for (const sc of ['pool', 'pacific', 'arctic']) {
   await setup([{ type: 'kbA', bot: 'duburi' }], sc);
   await wait(800);
   await holdSim(['KeyF'], 2.0); // dive
@@ -108,12 +108,12 @@ await shot('31-3p-spectator');
 await toMenu();
 
 // --- fast-forward a CPU run to the results screen ---
-await setup([{ type: 'cpu', bot: 'duburi' }], 'atlantic');
+await setup([{ type: 'cpu', bot: 'duburi' }], 'pacific');
 await page.evaluate(() => { const a = window.__duburi; const g = a.game; const ap = a.pilots[0]; while (!g.over && g.time < 900) { ap.update(1 / 120); g.step(1 / 120); } });
 await wait(3500);
 await page.waitForSelector('table.results', { timeout: 10000 });
 await shot('40-results');
-results.push({ test: 'CPU full run (Atlantic)', ...(await state()) });
+results.push({ test: 'CPU full run (Pacific)', ...(await state()) });
 
 // --- pause menu: skip a task from the menu (keyboard navigation) ---
 await quality('high');
@@ -124,7 +124,8 @@ await page.keyboard.press('Escape');
 await page.waitForSelector('.pause-menu');
 await wait(300);
 await shot('41-pause');
-await page.keyboard.press('ArrowDown'); // Resume -> Skip task
+const itemsP = await page.$$eval('.pause-menu .mi', (els) => els.map((e) => e.dataset.a));
+for (let k = 0; k < itemsP.indexOf('skip'); k++) await page.keyboard.press('ArrowDown');
 await page.keyboard.press('Enter');
 await wait(500);
 const sk = await page.evaluate(() => { const a = window.__duburi, g = a.game, p = g.players[0]; return { paused: a.paused, task: g.currentTask(p), skipped: [...(p.run.skipped || [])] }; });

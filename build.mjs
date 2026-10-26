@@ -29,7 +29,7 @@ const html = `<!doctype html>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Life as Duburi</title>
-<meta name="description" content="Life as Duburi: an underwater robotics game by Team BRACU DUBURI. 1-4 players pilot AUVs through a competition course in a pool, the Pacific, the Arctic or the Atlantic, on the DUBURI ROV simulator physics.">
+<meta name="description" content="Life as Duburi: an underwater robotics game by Team BRACU DUBURI. 1-4 players pilot AUVs through a competition course in a pool, the Pacific or the Arctic, on the DUBURI ROV simulator physics.">
 <meta name="generator" content="DUBURI Simulator ${version}">
 <link rel="icon" href="${favicon}">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>

@@ -199,7 +199,7 @@ class App {
     });
     this.itemMeshes = new Map();
     this.cams = game.players.map(() => 'chase');
-    this.hud = new HUD(this.ui, game, { logoUrl, cams: this.cams });
+    this.hud = new HUD(this.ui, game, { logoUrl, cams: this.cams, onPause: () => this.openPause(this.viewPlayers[0]), onQuit: () => this.confirmQuit() });
     // each player sees their own controller / key layout for the first seconds
     this.devices.forEach((d, i) => { if (d !== 'cpu') this.hud.showCard(i, quickCardHTML(d, d.startsWith('pad') ? this.input.pad(d) : null), 12); });
     this.buildViews();
@@ -346,12 +346,12 @@ class App {
     const o = this.overlay(`<header style="--pc:${p.color}"><i class="pdot"></i><h2>Paused — ${esc(p.name)}</h2><span class="sub">${esc(p.design.name)} · ${g.total(p).toLocaleString()} pts${task ? ` · on: ${task}` : ''}</span></header>
       <div class="scroll"><div class="pause-menu">
         ${b('resume', 'Resume', '', 'primary')}
+        ${b('quit', 'Quit match', 'leave the match and go back to the lobby', 'bad')}
         ${running ? b('skip', `Skip task${task ? `: ${task}` : ''}`, 'no points for it — you are moved to the next task') : ''}
         ${running ? b('end', 'End run', 'keep the points of this run') : ''}
         ${b('forfeit', 'Forfeit run', 'lose this run\'s points and start again from the dock', 'warn')}
         ${humans > 1 ? b('leave', 'Leave match', 'the others keep playing', 'warn') : ''}
         ${b('restart', 'Restart match', 'same players, same water')}
-        ${b('quit', 'Quit to main menu', '', 'bad')}
         ${b('quality', `Graphics: ${QUALITY[this.quality].label}`, 'High · Medium · Low')}
         ${b('controls', 'Controls & customise', `${p.device === 'cpu' ? '' : 'see your layout, re-bind buttons and keys'}`)}
         ${b('mute', this.sound.muted ? 'Sound: off' : 'Sound: on')}
@@ -438,6 +438,16 @@ class App {
     this.input.pressed.clear();
     const { owner, back } = this.ctrl || { owner: -1, back: () => this.closeOverlay() };
     this.openControls(dev, owner, back, c.i);
+  }
+
+  // the always-visible Quit button: ask first
+  confirmQuit() {
+    if (this.state !== 'game' || !this.game) return;
+    this.paused = true;
+    const o = this.overlay(`<header><h2>Quit the match?</h2></header><div class="scroll"><p>The match ends for everyone and you go back to the lobby.</p>
+      <div class="pause-menu"><button class="mi" data-nav data-a="no"><b>No, keep playing</b></button><button class="mi bad" data-nav data-a="yes"><b>Yes, quit</b></button></div></div>`, { owner: -1, onBack: () => this.resume() });
+    o.querySelector('[data-a=no]').onclick = () => this.resume();
+    o.querySelector('[data-a=yes]').onclick = () => this.toMenu();
   }
 
   resume() {
@@ -734,6 +744,9 @@ class App {
         const want = tmpV.set(grp.position.x - Math.sin(yaw) * back, grp.position.y + up, grp.position.z + Math.cos(yaw) * back);
         // keep the camera inside the arena and above the floor
         want.y = Math.max(want.y, -g.course.floor + 0.3);
+        // stay under the water: from above, the surface hides the vehicle (a floating start
+        // or a surfacing vehicle is filmed from just below the surface)
+        want.y = Math.min(want.y, g.env.surfaceElevation(-want.z, want.x) - 0.22);
         want.x = Math.max(-12.3, Math.min(12.3, want.x));
         want.z = Math.max(-24.8, Math.min(24.8, want.z));
         if (!view.smooth) view.smooth = want.clone();

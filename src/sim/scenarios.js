@@ -35,19 +35,9 @@ export const SCENARIOS = {
     pool: { length: 50, width: 25, style: 'natural' },
     look: { water: 0x0f4a5c, fog: 0x13505f, fogDensity: 0.05, sky: 0xd8ecf4, floor: 'gravel', light: 0.7, sun: 0xdfefff, surface: 0x9fd2e0, particles: 1.0, life: 'arctic', ice: true },
   },
-  atlantic: {
-    id: 'atlantic',
-    name: 'Atlantic Ocean',
-    place: 'North Atlantic coast, 12 °C',
-    blurb: 'Green, murky, cool water over rock and kelp. A real current, chop on the surface and gusty flow.',
-    env: { temperature: 12, salinity: 35.5, current: [-0.06, 0.16, 0], turbulence: { sigma: 0.06, tau: 2.5 }, waves: { amplitude: 0.22, period: 5.5, direction: 110 }, visibility: 12 },
-    depth: 10,
-    pool: { length: 50, width: 25, style: 'natural' },
-    look: { water: 0x2c5f55, fog: 0x2f6355, fogDensity: 0.07, sky: 0xb4c4c8, floor: 'rock', light: 0.85, sun: 0xf0f4e8, surface: 0x6f9c8c, particles: 0.8, life: 'kelp', ice: false },
-  },
 };
 
-export const SCENARIO_ORDER = ['pool', 'pacific', 'arctic', 'atlantic'];
+export const SCENARIO_ORDER = ['pool', 'pacific', 'arctic'];
 
 export const DEPTH_CHOICES = [0, 5, 8, 12, 16, 20]; // 0 = the scenario's own depth
 
