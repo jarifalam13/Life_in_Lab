@@ -170,6 +170,94 @@ docs/           the same file for GitHub Pages
 screenshots/    pictures for this README
 ```
 
+## What each file does
+
+### Top level
+
+| File | What it is for |
+|---|---|
+| `README.md` | This guide. |
+| `LICENSE` | GPL-3.0-or-later licence. |
+| `package.json` / `package-lock.json` | npm project: dependencies (three.js, esbuild) and the `build`, `test` and `e2e` scripts. |
+| `build.mjs` | Build script: bundles `src/` with esbuild and inlines the CSS, images and code into one HTML file. |
+| `.gitignore` | Files git ignores (`node_modules/`, test output). |
+| `dist/life-as-duburi.html` | **The built game** in one file. Download and double-click to play offline. |
+| `docs/index.html` | The same built game, served by GitHub Pages. |
+| `docs/.nojekyll` | Tells GitHub Pages to serve the file as it is. |
+
+### `assets/` — pictures packed into the game
+
+| File | What it is for |
+|---|---|
+| `logo.jpg` | BRACU DUBURI logo: title screen, HUD, dock sign, pool banners, Duburi bot side plates. |
+| `shark.jpg`, `sawfish.jpg` | Animal prints hanging on the gate and the octagon. |
+| `bin-shark.jpg`, `bin-sawfish.jpg` | The two halves inside the bin; also the "chosen animal" icon on the HUD. |
+| `board-shark-top.jpg`, `board-sawfish-top.jpg` | The two versions of the torpedo board picture. |
+
+### `src/` — the game code
+
+| File | What it is for |
+|---|---|
+| `main.js` | Entry point. Creates the renderer, runs the game loop (120 Hz physics, interpolated drawing), splits the screen per player, handles the pause menus, the controls screen and re-binding, results, bubbles, sound and the TV camera. |
+
+**`src/sim/` — game logic (no graphics; also runs in node for the tests)**
+
+| File | What it is for |
+|---|---|
+| `game.js` | One match: clock, players, runs, markers / torpedoes / trash, and the judging of every task and rule (gate first, breach, skip, forfeit, leave, time bonus). Point values are in `POINTS`. |
+| `vehicle.js` | Vehicle physics (6-DOF body in water, buoyancy, drag, thrusters) and the pilot loop (stabilise, depth hold, roll / pitch flips). |
+| `bots.js` | The five vehicles: Duburi, Dubo Mini, Barracuda, Kraken, Manta — mass, size, drag, thruster layout. |
+| `course.js` | Where every course element is (gate, path markers, slalom, bin, torpedo board, octagon, pingers, dock) and its sizes. |
+| `collide.js` | Collisions of vehicles with the course, the floor, the walls and each other. |
+| `scenarios.js` | The four waters (pool, Pacific, Arctic, Atlantic): temperature, salinity, current, waves, depth, colours. |
+| `autopilot.js` | CPU opponent: flies the whole course with the same controls a player uses. |
+| `stats.js` | Speed, turn rate, axes and buoyancy shown in the lobby, worked out from the physics. |
+
+**`src/render/` — 3D graphics (three.js)**
+
+| File | What it is for |
+|---|---|
+| `scenery.js` | The water world: surface and waves, floor and caustics, pool walls, coral, kelp, ice, fish, particles, light rays, fog. |
+| `course3d.js` | 3D models of the course elements. |
+| `bots3d.js` | 3D models of the five vehicles (spinning props, gripper, markers, torpedoes) and of the payload items. |
+| `art.js` | Loads the animal pictures as textures. |
+| `post.js` | Post-processing per split-screen view: bloom, underwater colour and wobble, vignette, grain, tone mapping. |
+| `bubbles.js` | Bubble particles from thrusters, torpedoes, markers and splashes. |
+| `graphics.js` | Graphics quality presets (High / Medium / Low), reflections and sun shadows. |
+
+**`src/ui/` — menus, HUD, input, sound**
+
+| File | What it is for |
+|---|---|
+| `menu.js` | Title screen, lobby (join, vehicle, colour, water, depth, clock), how-to-play, results table. |
+| `hud.js` | In-game HUD per player: score, depth, heading, attitude ball, hydrophone, mini-map, task list, messages, controls card, leaderboard. |
+| `input.js` | Keyboard and gamepad reading, default and saved button / key bindings, stick presets. |
+| `controls.js` | Controls screen: the controller drawing, the list of bindings to change, and the start-of-match card. |
+| `audio.js` | Synthesised sound: thrusters, underwater ambience, pingers, splashes, hits, menu sounds. |
+| `style.css` | Look of all menus and the HUD. |
+
+**From the DUBURI simulator (unchanged)**
+
+| File | What it is for |
+|---|---|
+| `physics/environment.js` | The water body: pressure, density with depth, current, turbulence, waves. |
+| `physics/thruster.js` | T200 / T500 / small thruster models: thrust curves, rotor lag, in-flow, ventilation. |
+| `alloc/allocation.js`, `alloc/frames.js` | Thruster allocation (which thruster pushes how much for each move) and ArduSub frame layouts. |
+| `hydro/water.js` | Sea-water density and viscosity (EOS-80). |
+| `core/math.js`, `core/rng.js` | Maths helpers (vectors, quaternions, matrices) and a seeded random number generator. |
+
+### `tests/`
+
+| File | What it is for |
+|---|---|
+| `game.test.mjs` | Node tests (`npm test`): physics, buoyancy, rules, skip / forfeit / leave, depth, full CPU runs for every vehicle and water. |
+| `e2e.mjs` | Browser test with screenshots: menus, all waters, 1–4 players, pause menu, lobby join, leave, forfeit. |
+| `controls-e2e.mjs` | Browser test with a simulated DualSense: join, layout screen, button and key re-binding. |
+
+### `screenshots/`
+
+Pictures used in this README.
+
 ## Credits
 
 Team **BRACU DUBURI**, BRAC University. Built on the DUBURI ROV simulator. Task layout, sizes
