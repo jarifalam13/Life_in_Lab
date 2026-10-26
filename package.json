@@ -6,7 +6,7 @@
   "scripts": {
     "build": "node build.mjs",
     "test": "node --test tests/*.test.mjs",
-    "e2e": "node tests/e2e.mjs dist/e2e"
+    "e2e": "node tests/e2e.mjs dist/e2e && node tests/controls-e2e.mjs dist/e2e"
   },
   "keywords": [
     "auv",

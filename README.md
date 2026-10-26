@@ -28,8 +28,8 @@ If a laptop struggles, set *Graphics* to Medium or Low in the pause menu.
 ![Lobby](screenshots/lobby.jpg)
 
 Press **✕ / A** on a controller, **Space** (left keyboard) or **Enter** (right keyboard) to join.
-Each player picks a vehicle with **◀ ▶** and a colour with **▲ ▼**, **△ / Y** adds a CPU
-opponent, **Options / Start** starts the match. The screen splits by itself: one player full
+Each player picks a vehicle with **◀ ▶** and a colour with **▲ ▼**, **Share / View** shows the
+controller layout, **△ / Y** adds a CPU opponent, **Options / Start** starts the match. The screen splits by itself: one player full
 screen, two side by side, three or four in quarters (with three, the fourth quarter is a TV
 camera that follows the leader, with live standings).
 
@@ -95,7 +95,7 @@ bin or torpedo + octagon surface.
 
 ![Pause menu](screenshots/pause.jpg)
 
-Each player has their own pause menu (**Start / Options**, **Tab** or **Backspace**; **Esc** for
+Each player has their own pause menu (**Options / Menu**, **Tab** or **Backspace**; **Esc** for
 player 1), driven with their own controller:
 
 * **Skip task** — no points for it; you are moved to the start of the next task.
@@ -104,20 +104,42 @@ player 1), driven with their own controller:
 * **Leave match** — you drop out, the others keep playing and the screen re-splits.
 * **Restart match** / **Quit to main menu**.
 
-## Controls
+## Controls — see them, change them
 
-| | Keyboard left | Keyboard right | Gamepad (ArduSub layout) |
+![Controls screen](screenshots/controls.jpg)
+
+Pick up a controller and the game shows you its layout: every player gets a card with *their*
+controller (or keys) at the start of a match, and the **Controls** screen (title screen, lobby,
+**Share / View** on a controller in the lobby, or *Controls & customise* in the pause menu)
+draws the PlayStation or Xbox controller with what every button does — buttons light up live
+as you press them.
+
+Everything can be changed and is remembered in the browser, separately for each controller and
+each keyboard side:
+
+* **Buttons / keys:** select an action and press the new button or key; one already in use is
+  swapped.
+* **Sticks:** ArduSub / QGC (left: up-down + turn, right: forward + strafe), Game (left:
+  forward + strafe, right: up-down + turn) or Racing (left: forward + turn, right: up-down +
+  strafe); invert Y; triggers for up / down on or off.
+* **Reset** brings back the defaults.
+
+![Start-of-match controls card](screenshots/controls-card.jpg)
+
+Defaults:
+
+| | Keyboard left | Keyboard right | Gamepad (PS / Xbox) |
 |---|---|---|---|
 | Forward / back | W / S | ↑ / ↓ | right stick ↕ |
 | Turn | A / D | ← / → | left stick ↔ |
 | Strafe | Q / E | J / L | right stick ↔ |
-| Up / down | R / F | I / K | left stick ↕ (or triggers) |
-| Roll / pitch (style) | Z X / T G | U O / Y H | LB RB / D-pad |
+| Up / down | R / F | I / K | left stick ↕, L2 / R2 |
+| Roll / pitch (style) | Z X / T G | U O / Y H | L1 R1 / D-pad ↑ ↓ |
 | Drop marker / fire torpedo / gripper | V / B / C | N / M / , | ✕ A / ○ B / □ X |
 | Camera (chase → front → down) | 1 | 7 | △ Y |
-| Depth hold on / off | 2 | 8 | Share / Back |
-| End run / forfeit / skip task | 3 / 4 / 5 | 9 / 0 / − | L3 / R3 / menu |
-| Pause menu | Tab or Esc | Backspace | Options / Start |
+| Depth hold on / off | 2 | 8 | Create / View |
+| End run / forfeit / skip task | 3 / 4 / 5 | 9 / 0 / − | L3 / R3 / D-pad → |
+| Pause menu | Tab or Esc | Backspace | Options / Menu |
 
 Hold Shift for fine control. The HUD shows depth, heading, speed, net buoyancy, an attitude
 ball, the hydrophone ring pointing at the 30 kHz (octagon) and 25 kHz (torpedo) pingers, a
@@ -131,7 +153,7 @@ mini-map and your task list.
 npm install
 npm run build      # -> dist/life-as-duburi.html and docs/index.html
 npm test           # headless: physics, rules, skip / forfeit / leave, full CPU runs in every water
-npm run e2e        # browser test with screenshots (needs Playwright + Chromium)
+npm run e2e        # browser tests with screenshots, incl. a simulated DualSense (needs Playwright + Chromium)
 ```
 
 ```
@@ -139,7 +161,7 @@ src/
   main.js       entry: renderer, split screen, pause menus, game loop
   sim/          vehicles, course layout, task judging, autopilot (no graphics, runs in node)
   render/       scenery, course elements, vehicle models, post-processing, bubbles, shadows
-  ui/           lobby and menus, HUD, keyboard / gamepad input, sound engine
+  ui/           lobby and menus, HUD, keyboard / gamepad input and re-binding, controls screen, sound engine
   physics/ alloc/ core/ hydro/   from the DUBURI simulator: water, thrusters, allocation, maths
 assets/         DUBURI logo and the task pictures
 tests/          node tests + browser test

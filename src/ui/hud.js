@@ -89,6 +89,7 @@ export class HUD {
     const full = this.acc > 1 / 20;
     if (full) this.acc = 0;
     if (full && this.boardRect) this.drawBoard();
+    this.panels.forEach((P, i) => { if (P.card && g.time > P.cardUntil) this.hideCard(i); });
     this.panels.forEach((P, i) => {
       const p = P.p, v = p.veh, r = p.run;
       if (!full || P.el.hidden) return;
@@ -177,6 +178,26 @@ export class HUD {
       g.restore();
     }
   }
+
+  // the player's controls card at the start of a match (fades after `sec`)
+  showCard(i, html, sec = 12) {
+    const P = this.panels[i];
+    if (!P) return;
+    this.hideCard(i);
+    const c = h('div', 'qcard', html);
+    P.el.appendChild(c);
+    P.card = c;
+    P.cardUntil = this.game.time + sec; // game time, so a slow first load doesn't eat it
+  }
+  hideCard(i) {
+    const P = this.panels[i];
+    if (!P || !P.card) return;
+    const c = P.card;
+    P.card = null;
+    c.classList.add('out');
+    setTimeout(() => c.remove(), 500);
+  }
+  highlightCard(i, fn) { const P = this.panels[i]; if (P && P.card) fn(P.card); }
 
   // place the leaderboard over a viewport rect (or hide it)
   setBoard(rect) {

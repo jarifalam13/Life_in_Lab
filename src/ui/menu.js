@@ -56,12 +56,13 @@ export function rulesHTML() {
 
 export function controlsHTML() {
   const tbl = (rows) => `<table>${rows.map(([k, v]) => `<tr><td><kbd>${esc(k)}</kbd></td><td>${esc(v)}</td></tr>`).join('')}</table>`;
-  return `<div class="controls"><div><h4>Keyboard — left</h4>${tbl(HELP.kbA)}<p class="note">Hold Left Shift for fine control.</p></div><div><h4>Keyboard — right</h4>${tbl(HELP.kbB)}<p class="note">Hold Right Shift for fine control.</p></div><div><h4>Gamepad (PS / Xbox, ArduSub layout)</h4>${tbl(HELP.pad)}</div></div><p class="note">Roll / pitch keys spin the vehicle; let go and the stabiliser levels it again, keeping your heading. Depth hold keeps you at the depth where you let go of up / down.</p>`;
+  return `<div class="controls"><div><h4>Keyboard — left</h4>${tbl(HELP.kbA)}</div><div><h4>Keyboard — right</h4>${tbl(HELP.kbB)}</div><div><h4>Gamepad 1 (PS / Xbox)</h4>${tbl(HELP.pad)}</div></div><p class="note">Every button and key can be changed under <b>Controls</b> (title screen, lobby or pause menu).</p><p class="note">Roll / pitch keys spin the vehicle; let go and the stabiliser levels it again, keeping your heading. Depth hold keeps you at the depth where you let go of up / down.</p>`;
 }
 
 
 export class Menu {
-  constructor(root, { logoUrl, thumb, onStart, sound, input }) {
+  constructor(root, { logoUrl, thumb, onStart, sound, input, onControls }) {
+    this.onControls = onControls;
     this.root = root;
     this.logoUrl = logoUrl;
     this.thumb = thumb;
@@ -94,12 +95,20 @@ export class Menu {
       <img class="title-logo" src="${this.logoUrl}" alt="BRACU DUBURI">
       <h1>${GAME_NAME}<span>an underwater robotics game</span></h1>
       <p class="tag">Pilot a real AUV through a competition course — in a pool or the open sea. 1 to 4 players on one screen.</p>
-      <div class="title-btns"><button class="btn primary" data-a="play">Play</button><button class="btn" data-a="help">How to play</button></div>
+      <div class="title-btns"><button class="btn primary" data-a="play">Play</button><button class="btn" data-a="controls">Controls</button><button class="btn" data-a="help">How to play</button></div>
       <p class="press">Press <kbd>Enter</kbd> or <span class="pad-btn">✕ / A</span> to start</p>
       <p class="small">Team BRACU DUBURI · BRAC University · physics from the DUBURI ROV simulator (ArduSub-style control, T200/T500 thrusters, EOS-80 sea water)</p>`;
     s.querySelector('[data-a=play]').onclick = () => this.go('setup');
     s.querySelector('[data-a=help]').onclick = () => { this.sound.ensure(); this.show('help'); };
+    s.querySelector('[data-a=controls]').onclick = () => this.controls();
     this.el.appendChild(s);
+  }
+
+  // controls screen for a device (default: the first connected controller)
+  controls(dev) {
+    this.sfx('uiSelect');
+    if (!dev) { const p = this.input?.pads()[0]; dev = p ? `pad${p.index}` : 'kbA'; }
+    this.onControls?.(dev);
   }
 
   sfx(name) { this.sound.ensure(); if (typeof this.sound[name] === 'function') this.sound[name](); else this.sound.click(); }
@@ -114,14 +123,15 @@ export class Menu {
 
   setupScreen() {
     const s = h('div', 'panel setup');
-    s.innerHTML = `<header><img src="${this.logoUrl}" alt="" class="hdr-logo"><h2>Lobby</h2><div class="sp"></div><button class="btn" data-a="back">Back</button><button class="btn primary" data-a="start">Start match ▶</button></header>
+    s.innerHTML = `<header><img src="${this.logoUrl}" alt="" class="hdr-logo"><h2>Lobby</h2><div class="sp"></div><button class="btn" data-a="back">Back</button><button class="btn" data-a="controls">Controls</button><button class="btn primary" data-a="start">Start match ▶</button></header>
       <div class="scroll">
-      <div class="join-bar"><b>Join:</b> press <span class="pad-btn">✕ / A</span> on a controller · <kbd>Space</kbd> left keyboard · <kbd>Enter</kbd> right keyboard &nbsp;—&nbsp; <span class="pad-btn">◀ ▶</span> vehicle · <span class="pad-btn">▲ ▼</span> colour · <span class="pad-btn">○ / B</span> leave · <span class="pad-btn">△ / Y</span> add CPU · <span class="pad-btn">Options / Start</span> start</div>
+      <div class="join-bar"><b>Join:</b> press <span class="pad-btn">✕ / A</span> on a controller · <kbd>Space</kbd> left keyboard · <kbd>Enter</kbd> right keyboard &nbsp;—&nbsp; <span class="pad-btn">◀ ▶</span> vehicle · <span class="pad-btn">▲ ▼</span> colour · <span class="pad-btn">○ / B</span> leave · <span class="pad-btn">△ / Y</span> add CPU · <span class="pad-btn">Share / View</span> your controls · <span class="pad-btn">Options / Start</span> start</div>
       <div class="slots"></div>
       <h3>Water</h3><div class="scen"></div>
       <h3>Match</h3><div class="opts"></div></div>`;
     s.querySelector('[data-a=back]').onclick = () => this.show('title');
     s.querySelector('[data-a=start]').onclick = () => this.start();
+    s.querySelector('[data-a=controls]').onclick = () => this.controls();
     this.el.appendChild(s);
     this.slotBox = s.querySelector('.slots');
     this.drawSlots();
@@ -140,7 +150,7 @@ export class Menu {
       const bar = (label, v, max, unit) => `<div class="bar"><span>${label}</span><i style="width:${Math.min(100, (v / max) * 100)}%"></i><b>${unit}</b></div>`;
       c.innerHTML = `
         <div class="slot-top"><b>P${i + 1}</b><select class="dev">${['off', ...DEVICES.map((d) => d.id)].map((id) => `<option value="${id}" ${sl.type === id ? 'selected' : ''}>${id === 'off' ? '— press to join —' : esc(DEVICES.find((d) => d.id === id).label)}</option>`).join('')}</select></div>
-        ${sl.type === 'off' ? '<div class="join-hint">Press <span class="pad-btn">✕ / A</span> to join</div>' : `<div class="ready">● ${sl.type === 'cpu' ? 'CPU' : 'Ready'}</div>`}
+        ${sl.type === 'off' ? '<div class="join-hint">Press <span class="pad-btn">✕ / A</span> to join</div>' : `<div class="ready">● ${sl.type === 'cpu' ? 'CPU' : 'Ready'}${sl.type !== 'cpu' ? ' <button class="linkbtn" data-ctl>controls</button>' : ''}</div>`}
         <input class="name" maxlength="16" value="${esc(sl.name)}" ${sl.type === 'off' ? 'disabled' : ''}>
         <div class="bot-pick"><button class="arrow" data-d="-1">‹</button><img class="thumb" alt=""><button class="arrow" data-d="1">›</button></div>
         <div class="bot-name">${esc(BOTS[sl.bot].name)}</div><div class="bot-kind">${esc(BOTS[sl.bot].kind)}</div>
@@ -154,6 +164,7 @@ export class Menu {
         <div class="colors">${PLAYER_COLORS.map((col) => `<button class="sw ${col === sl.color ? 'on' : ''}" style="background:${col}" data-c="${col}" aria-label="colour ${col}"></button>`).join('')}</div>`;
       this.thumb(sl.bot, sl.color).then((url) => { const im = c.querySelector('.thumb'); if (im) im.src = url; });
       c.querySelector('.dev').onchange = (e) => { this.assign(i, e.target.value); };
+      c.querySelector('[data-ctl]')?.addEventListener('click', () => this.controls(sl.type));
       c.querySelector('.name').oninput = (e) => { sl.name = e.target.value || `Player ${i + 1}`; };
       c.querySelectorAll('.arrow').forEach((b) => (b.onclick = () => this.cycleBot(i, +b.dataset.d)));
       c.querySelectorAll('.sw').forEach((b) => (b.onclick = () => { sl.color = b.dataset.c; this.drawSlots(); }));
@@ -217,11 +228,12 @@ export class Menu {
     if (!this.visible || !this.input) return;
     for (const { pad, button } of this.input.padPresses()) {
       const dev = `pad${pad}`;
-      if (this.screen === 'title') { if (button === 0 || button === 9) this.go('setup'); continue; }
+      if (this.screen === 'title') { if (button === 0 || button === 9) this.go('setup'); else if (button === 8) { this.controls(dev); return; } continue; }
       if (this.screen === 'help') { if (button === 1 || button === 0) this.show('title'); continue; }
       if (this.screen !== 'setup') continue;
       const i = this.setup.slots.findIndex((s) => s.type === dev);
       if (button === 0) { if (i < 0) this.join(dev); continue; }
+      if (button === 8) { this.controls(dev); return; }
       if (button === 9) { if (i >= 0) this.start(); continue; }
       if (i < 0) { if (button === 1) this.show('title'); continue; }
       if (button === 1) this.assign(i, 'off');

@@ -19,7 +19,8 @@ import { createPost } from './render/post.js';
 import { createBubbles } from './render/bubbles.js';
 import { QUALITY, QUALITY_ORDER, loadQuality, saveQuality, makeEnvironment, setupShadows, castShadows } from './render/graphics.js';
 import { HUD } from './ui/hud.js';
-import { Input } from './ui/input.js';
+import { Input, DEVICES, ACTIONS, PAD_HOLDS, KEY_AXES, getBindings, saveBindings, resetBindings, buttonName, keyName, padStyle } from './ui/input.js';
+import { controlsScreenHTML, highlightPad, quickCardHTML } from './ui/controls.js';
 import { Sound } from './ui/audio.js';
 import { Menu, resultsHTML, rulesHTML, controlsHTML, GAME_NAME } from './ui/menu.js';
 
@@ -55,7 +56,9 @@ class App {
     this.logoTexture.anisotropy = 4;
     this.input = new Input(window);
     this.sound = new Sound();
-    this.menu = new Menu(this.ui, { logoUrl, thumb: (bot, color) => this.thumb(bot, color), onStart: (cfg) => this.start(cfg), sound: this.sound, input: this.input });
+    this.menu = new Menu(this.ui, { logoUrl, thumb: (bot, color) => this.thumb(bot, color), onStart: (cfg) => this.start(cfg), sound: this.sound, input: this.input, onControls: (dev) => this.openControlsFromMenu(dev) });
+    // a controller plugged in: tell the player how to join / see its layout
+    window.addEventListener('gamepadconnected', (e) => { if (this.state === 'menu') this.menu.flash(`Controller ${e.gamepad.index + 1} connected — press ✕ / A to join, Share / View for its layout`); });
     this.thumbs = new Map();
     this.state = 'menu';
     this.applyQuality();
@@ -173,13 +176,16 @@ class App {
     this.scene = scene;
     const c = game.course;
     const sc = SCENARIOS[cfg.scenario];
-    const clear = [c.dock.pos, c.gate.pos, c.slalom.pos, c.bin.pos, c.board.pos, c.octagon.pos].map((p) => ({ x: p[1], z: -p[0], r: 4 }));
+    // keep rocks, kelp and ice away from the course; the dock gets extra room for the start cameras
+    const clear = [[c.dock.pos, 8], [c.gate.pos, 5], [c.slalom.pos, 5], [c.bin.pos, 4], [c.board.pos, 4], [c.octagon.pos, 5]].map(([p, r]) => ({ x: p[1], z: -p[0], r }));
     this.scenery = createScenery(scene, sc, { logoTexture: this.logoTexture, arena: game.arena, clearZones: clear });
     this.course3d = createCourse(c, { logoTexture: this.logoTexture });
     castShadows(this.course3d.group);
     scene.add(this.course3d.group);
     this.sceneExtras(scene, sc.look, game.arena);
     this.devices = cfg.players.map((p) => p.device);
+    // a button still held from the lobby (Options to start) must not fire in the game
+    this.devices.forEach((d) => { if (d.startsWith('pad')) this.input.read(d); });
     this.pilots = cfg.players.map((p, i) => (p.device === 'cpu' ? new Autopilot(game, i) : null));
     this.bots = game.players.map((p) => {
       const m = createBotMesh(p.design, p.color, { logoTexture: this.logoTexture });
@@ -194,6 +200,8 @@ class App {
     this.itemMeshes = new Map();
     this.cams = game.players.map(() => 'chase');
     this.hud = new HUD(this.ui, game, { logoUrl, cams: this.cams });
+    // each player sees their own controller / key layout for the first seconds
+    this.devices.forEach((d, i) => { if (d !== 'cpu') this.hud.showCard(i, quickCardHTML(d, d.startsWith('pad') ? this.input.pad(d) : null), 12); });
     this.buildViews();
     this.acc = 0;
     this.pingNext = c.pingers.map(() => 0);
@@ -254,6 +262,12 @@ class App {
 
   // ------------------------------------------------------------------ menus (keyboard + gamepad navigation)
   onKey(e) {
+    if (this.capture && !this.capture.device.startsWith('pad')) {
+      e.preventDefault();
+      this.input.pressed.delete(e.code);
+      if (e.code === 'Escape') this.endCapture(null); else this.endCapture(e.code);
+      return;
+    }
     if (this.nav) {
       const k = e.code;
       this.input.pressed.delete(k); // a key used in a menu does nothing in the game
@@ -276,12 +290,14 @@ class App {
     this.ov = o;
     const items = [...o.querySelectorAll('[data-nav]')];
     this.nav = { items, i: 0, owner, onBack };
-    items.forEach((b, i) => b.addEventListener('mouseenter', () => this.navFocus(i)));
+    // only a real mouse movement moves the focus (Chrome sends synthetic events when
+    // the overlay appears under a resting cursor)
+    items.forEach((b, i) => b.addEventListener('mousemove', (e) => { if ((e.movementX || e.movementY) && this.nav?.i !== i) this.navFocus(i); }));
     this.navFocus(0);
     this.input.padPresses(); // swallow the press that opened it
     return o;
   }
-  closeOverlay() { if (this.ov) { this.ov.remove(); this.ov = null; } this.nav = null; }
+  closeOverlay() { if (this.ov) { this.ov.remove(); this.ov = null; } this.nav = null; this.ctrl = null; this.capture = null; }
   navFocus(i) {
     const n = this.nav;
     if (!n || !n.items.length) return;
@@ -294,7 +310,15 @@ class App {
   navBack() { const n = this.nav; if (n && n.onBack) { this.sfx('uiBack'); n.onBack(); } }
   navPoll() {
     if (!this.nav) return;
-    for (const { pad, button } of this.input.padPresses()) {
+    const presses = this.input.padPresses();
+    if (this.capture && this.capture.device.startsWith('pad')) {
+      const want = +this.capture.device.slice(3);
+      const hit = presses.find((p) => p.pad === want && p.button !== 16);
+      if (hit) this.endCapture(hit.button);
+      else if (performance.now() - this.capture.t0 > 8000) this.endCapture(null);
+      return;
+    }
+    for (const { pad, button } of presses) {
       const owner = this.nav.owner;
       const ownerPad = owner >= 0 && this.devices?.[owner]?.startsWith('pad') ? +this.devices[owner].slice(3) : -1;
       if (ownerPad >= 0 && pad !== ownerPad && button !== 9) continue; // the owner drives their menu
@@ -311,7 +335,9 @@ class App {
     if (this.state !== 'game' || !this.game || this.game.over) return;
     const g = this.game;
     const p = g.players[pi] || g.players[0];
+    p.device = this.devices[p.index];
     this.paused = true;
+    this.hud?.hideCard(p.index);
     this.sound.ensure();
     const running = p.run.state === 'running';
     const task = running ? TASK_NAME[g.currentTask(p)] : null;
@@ -327,6 +353,7 @@ class App {
         ${b('restart', 'Restart match', 'same players, same water')}
         ${b('quit', 'Quit to main menu', '', 'bad')}
         ${b('quality', `Graphics: ${QUALITY[this.quality].label}`, 'High · Medium · Low')}
+        ${b('controls', 'Controls & customise', `${p.device === 'cpu' ? '' : 'see your layout, re-bind buttons and keys'}`)}
         ${b('mute', this.sound.muted ? 'Sound: off' : 'Sound: on')}
       </div>
       <p class="note nav-hint">↑ ↓ / D-pad to choose · Enter / ✕ / A to select · Esc / ○ / B to resume</p>
@@ -350,6 +377,67 @@ class App {
       this.openPause(pi);
     });
     on('mute', () => { this.sound.setMuted(!this.sound.muted); this.openPause(pi); });
+    on('controls', () => { const d = this.devices[pi]; this.openControls(d === 'cpu' ? 'kbA' : d, pi, () => this.openPause(pi)); });
+  }
+
+  // ------------------------------------------------------------------ controls screen
+  openControlsFromMenu(dev) {
+    const back = this.menu.screen || 'title';
+    this.menu.hide();
+    this.openControls(dev, -1, () => { this.closeOverlay(); this.menu.show(back); });
+  }
+
+  openControls(device, owner, back, focus = 0) {
+    const pads = this.input.pads();
+    const devices = DEVICES.filter((d) => d.id !== 'cpu').map((d) => ({ ...d, connected: d.id.startsWith('pad') ? pads.some((p) => p.index === +d.id.slice(3)) : true }));
+    const pad = device.startsWith('pad') ? this.input.pad(device) : null;
+    const o = this.overlay(controlsScreenHTML(device, { devices, pad }), { owner, onBack: back });
+    o.classList.add('controls-ov');
+    this.ctrl = { device, owner, back };
+    const reopen = (i) => { this.input.reloadBindings(); this.openControls(device, owner, back, i); };
+    const idx = (el) => this.nav.items.indexOf(el);
+    o.querySelectorAll('[data-dev]').forEach((el) => (el.onclick = () => this.openControls(el.dataset.dev, owner, back, idx(el))));
+    o.querySelectorAll('[data-preset]').forEach((el) => (el.onclick = () => { const b = getBindings(device); b.sticks = el.dataset.preset; saveBindings(device, b); reopen(idx(el)); }));
+    o.querySelectorAll('[data-toggle]').forEach((el) => (el.onclick = () => { const b = getBindings(device); b[el.dataset.toggle] = !b[el.dataset.toggle]; saveBindings(device, b); reopen(idx(el)); }));
+    o.querySelectorAll('[data-bind]').forEach((el) => (el.onclick = () => {
+      el.classList.add('capturing');
+      el.querySelector('kbd').textContent = device.startsWith('pad') ? 'press a button…' : 'press a key…';
+      this.capture = { device, id: el.dataset.bind, i: idx(el), t0: performance.now() };
+      this.input.padPresses(); // the ✕ that started this is not the new binding
+    }));
+    o.querySelector('[data-reset]').onclick = () => { resetBindings(device); reopen(idx(o.querySelector('[data-reset]'))); };
+    o.querySelector('[data-close]').onclick = () => back();
+    this.navFocus(focus);
+  }
+
+  // store a captured button / key (null = cancelled); a binding already in use is swapped
+  endCapture(code) {
+    const c = this.capture;
+    this.capture = null;
+    if (!c) return;
+    const dev = c.device;
+    if (code != null) {
+      const b = getBindings(dev);
+      if (dev.startsWith('pad')) {
+        const old = b.buttons[c.id];
+        for (const k of Object.keys(b.buttons)) if (k !== c.id && b.buttons[k] === code) b.buttons[k] = old;
+        b.buttons[c.id] = code;
+      } else {
+        const slots = [...KEY_AXES.map((a) => ['axes', a.id]), ...ACTIONS.map((a) => ['actions', a.id]), ['fine', null]];
+        const get = ([g, k]) => (g === 'fine' ? b.fine : b[g][k]);
+        const set = ([g, k], v) => { if (g === 'fine') b.fine = v; else b[g][k] = v; };
+        const mine = c.id === 'fine' ? ['fine', null] : [c.id.startsWith('ax:') ? 'axes' : 'actions', c.id.slice(3)];
+        const old = get(mine);
+        for (const sl of slots) if (!(sl[0] === mine[0] && sl[1] === mine[1]) && get(sl) === code) set(sl, old);
+        set(mine, code);
+      }
+      saveBindings(dev, b);
+      this.sfx('uiSelect');
+    } else this.sfx('uiBack');
+    this.input.reloadBindings();
+    this.input.pressed.clear();
+    const { owner, back } = this.ctrl || { owner: -1, back: () => this.closeOverlay() };
+    this.openControls(dev, owner, back, c.i);
   }
 
   resume() {
@@ -397,6 +485,8 @@ class App {
     this.last = now;
     this.fps += (1 / Math.max(dt, 1e-3) - this.fps) * 0.05;
     this.navPoll();
+    if (this.ctrl && this.ctrl.device.startsWith('pad') && this.ov) highlightPad(this.ov, this.input.pad(this.ctrl.device));
+    if (this.hud && this.devices) this.devices.forEach((d, i) => { if (d.startsWith('pad')) this.hud.highlightCard(i, (el) => highlightPad(el, this.input.pad(d))); });
     if (this.state === 'game' && this.game) this.gameFrame(dt);
     else { this.menu.poll(); this.menuFrame(dt); }
     this.input.endFrame();
