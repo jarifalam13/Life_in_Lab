@@ -41,7 +41,8 @@ class App {
     this.canvas.className = 'gl';
     root.appendChild(this.canvas);
     this.quality = loadQuality();
-    this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: true, powerPreference: 'high-performance' });
+    // post-processing does its own MSAA; the canvas only needs it when post is off
+    this.renderer = new THREE.WebGLRenderer({ canvas: this.canvas, antialias: !QUALITY[this.quality].post, powerPreference: 'high-performance' });
     this.renderer.outputColorSpace = THREE.SRGBColorSpace;
     this.renderer.toneMapping = THREE.ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.05;

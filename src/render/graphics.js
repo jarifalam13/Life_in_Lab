@@ -5,7 +5,7 @@
 import * as THREE from 'three';
 
 export const QUALITY = {
-  high: { label: 'High', post: 'high', shadows: 2048, pixelRatio: 1.5, bubbles: 2000 },
+  high: { label: 'High', post: 'high', shadows: 2048, pixelRatio: 1.25, bubbles: 2000 },
   medium: { label: 'Medium', post: 'low', shadows: 1024, pixelRatio: 1, bubbles: 1200 },
   low: { label: 'Low', post: null, shadows: 0, pixelRatio: 1, bubbles: 600 },
 };

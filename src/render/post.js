@@ -267,59 +267,62 @@ export function createPost(renderer, { quality = 'high' } = {}) {
     const glY = _size.y - rect.y - rect.h;
     const T = targets(pw, ph);
     const prevAutoClear = renderer.autoClear;
+    try {
+      // 1. scene -> linear HDR target (three skips tone mapping / sRGB on targets);
+      //    the target has its own full-size viewport and no scissor test
+      renderer.setRenderTarget(T.scene);
+      renderer.autoClear = true;
+      renderer.render(scene, camera);
+      renderer.autoClear = false;
 
-    // 1. scene -> linear HDR target (three skips tone mapping / sRGB on targets);
-    //    the target has its own full-size viewport and no scissor test
-    renderer.setRenderTarget(T.scene);
-    renderer.autoClear = true;
-    renderer.render(scene, camera);
-    renderer.autoClear = false;
+      // 2. bloom: bright pass (4x4 box down to 1/4), then separable blur levels
+      //    (each further level also halves the resolution)
+      const bu = brightMat.uniforms;
+      bu.tSrc.value = T.scene.texture;
+      bu.uTexel.value.set(1 / pw, 1 / ph);
+      const thr = (under ? 0.85 : 1.0) * settings.threshold;
+      bu.uThreshold.value = thr;
+      bu.uKnee.value = thr * 0.5;
+      draw(brightMat, T.bright);
+      const lu = blurMat.uniforms;
+      let src = T.bright;
+      for (let i = 0; i < T.lvl.length; i++) {
+        const tmp = T.tmp[i], dst = T.lvl[i];
+        lu.tSrc.value = src.texture;
+        lu.uDir.value.set(P.spread / tmp.width, 0);
+        draw(blurMat, tmp);
+        lu.tSrc.value = tmp.texture;
+        lu.uDir.value.set(0, P.spread / dst.height);
+        draw(blurMat, dst);
+        src = dst;
+      }
 
-    // 2. bloom: bright pass, then separable blur levels (each one downsamples)
-    const bu = brightMat.uniforms;
-    bu.tSrc.value = T.scene.texture;
-    bu.uTexel.value.set(1 / pw, 1 / ph);
-    const thr = (under ? 0.85 : 1.0) * settings.threshold;
-    bu.uThreshold.value = thr;
-    bu.uKnee.value = thr * 0.5;
-    draw(brightMat, T.bright);
-    const lu = blurMat.uniforms;
-    let src = T.bright;
-    for (let i = 0; i < T.lvl.length; i++) {
-      const tmp = T.tmp[i], dst = T.lvl[i];
-      lu.tSrc.value = src.texture;
-      lu.uDir.value.set(P.spread / tmp.width, 0);
-      draw(blurMat, tmp);
-      lu.tSrc.value = tmp.texture;
-      lu.uDir.value.set(0, P.spread / dst.height);
-      draw(blurMat, dst);
-      src = dst;
+      // 3. composite into the canvas rect (tone mapping + output colour space)
+      const fu = finalMat.uniforms;
+      fu.tScene.value = T.scene.texture;
+      fu.tBloom0.value = T.lvl[0].texture;
+      fu.tBloom1.value = (T.lvl[1] || T.lvl[0]).texture;
+      fu.tBloom2.value = (T.lvl[2] || T.lvl[0]).texture;
+      const bs = (under ? 0.24 + 0.1 * turb : 0.16) * settings.bloom;
+      fu.uBloomW.value.set(P.weights[0] * bs, P.weights[1] * bs, P.weights[2] * bs);
+      absorption(fu.uAbsorb.value, depth, turb, water);
+      fu.uSat.value = under ? 1.08 - 0.1 * turb : 1.0;
+      fu.uContrast.value = under ? 1.05 - 0.04 * turb : 1.0;
+      fu.uTime.value = time;
+      fu.uAspect.value = rect.w / rect.h;
+      fu.uWobble.value = under ? (0.0022 + 0.0012 * turb) * settings.wobble : 0;
+      fu.uCA.value = P.chroma ? (under ? 0.016 : 0.011) * settings.aberration : 0;
+      fu.uVignette.value = (under ? 0.34 + 0.1 * turb : 0.18) * settings.vignette;
+      fu.uGrain.value = (1.2 / 255 + (under ? 0.007 + 0.004 * turb : 0.004)) * settings.grain;
+
+      renderer.setRenderTarget(null);
+      renderer.setViewport(rect.x, glY, rect.w, rect.h);
+      renderer.setScissor(rect.x, glY, rect.w, rect.h); // the scissor test keeps the renderer's own setting
+      quad.material = finalMat;
+      renderer.render(quad, cam);
+    } finally {
+      renderer.autoClear = prevAutoClear;
     }
-
-    // 3. composite into the canvas rect (tone mapping + output colour space)
-    const fu = finalMat.uniforms;
-    fu.tScene.value = T.scene.texture;
-    fu.tBloom0.value = T.lvl[0].texture;
-    fu.tBloom1.value = (T.lvl[1] || T.lvl[0]).texture;
-    fu.tBloom2.value = (T.lvl[2] || T.lvl[0]).texture;
-    const bs = (under ? 0.24 + 0.1 * turb : 0.16) * settings.bloom;
-    fu.uBloomW.value.set(P.weights[0] * bs, P.weights[1] * bs, P.weights[2] * bs);
-    absorption(fu.uAbsorb.value, depth, turb, water);
-    fu.uSat.value = under ? 1.08 - 0.1 * turb : 1.0;
-    fu.uContrast.value = under ? 1.05 - 0.04 * turb : 1.0;
-    fu.uTime.value = time;
-    fu.uAspect.value = rect.w / rect.h;
-    fu.uWobble.value = under ? (0.0022 + 0.0012 * turb) * settings.wobble : 0;
-    fu.uCA.value = P.chroma ? (under ? 0.016 : 0.011) * settings.aberration : 0;
-    fu.uVignette.value = (under ? 0.34 + 0.1 * turb : 0.18) * settings.vignette;
-    fu.uGrain.value = (1.2 / 255 + (under ? 0.007 + 0.004 * turb : 0.004)) * settings.grain;
-
-    renderer.setRenderTarget(null);
-    renderer.setViewport(rect.x, glY, rect.w, rect.h);
-    renderer.setScissor(rect.x, glY, rect.w, rect.h); // the scissor test keeps the renderer's own setting
-    quad.material = finalMat;
-    renderer.render(quad, cam);
-    renderer.autoClear = prevAutoClear;
   }
 
   return {
