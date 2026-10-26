@@ -1,6 +1,6 @@
 # LIFE AS DUBURI — RoboSub 2025 game
 
-![DUBURI RoboSub title screen](game/screenshots/title.jpg)
+![DUBURI RoboSub title screen](screenshots/title.jpg)
 
 **RoboSub 2025 "Protect the Deep"** turned into a browser game for **Team BRACU DUBURI**.
 Pick an AUV, dive into a pool or the open sea and do the real competition tasks — gate,
@@ -10,15 +10,16 @@ opponents.
 
 The vehicles are not cartoon physics: every bot runs on the **DUBURI ROV simulator**'s own
 models (6-DOF hydrodynamics, Blue Robotics T200 / T500 thruster curves, ArduSub-style
-stabilise + depth hold, EOS-80 sea water). The simulator itself is in this repo too — see
-[SIMULATOR.md](SIMULATOR.md).
+stabilise + depth hold, EOS-80 sea water). The physics modules in `src/physics`, `src/alloc`,
+`src/core` and `src/hydro` are taken unchanged from the
+[DUBURI simulator](https://github.com/jarifalamclaude-max/simulator).
 
 ## ▶ Play
 
 * **Offline, no install:** download [`dist/duburi-robosub.html`](dist/duburi-robosub.html) and
   double-click it. Everything (code, textures, logo) is inside that one file.
 * **On GitHub Pages:** in *Settings → Pages* choose branch `main`, folder `/docs`; the game is
-  then at `https://<user>.github.io/LIFE_AS_DUBURI/game/`.
+  then at `https://jarifalamclaude-max.github.io/LIFE_AS_DUBURI/`.
 
 Chrome, Edge or Firefox with WebGL. A gamepad works in Chrome / Edge.
 
@@ -26,7 +27,7 @@ Chrome, Edge or Firefox with WebGL. A gamepad works in Chrome / Edge.
 
 | Swimming pool | Pacific Ocean | Arctic Ocean | Atlantic Ocean |
 |---|---|---|---|
-| ![](game/screenshots/gate.jpg) | ![](game/screenshots/pacific.jpg) | ![](game/screenshots/arctic.jpg) | ![](game/screenshots/atlantic.jpg) |
+| ![](screenshots/gate.jpg) | ![](screenshots/pacific.jpg) | ![](screenshots/arctic.jpg) | ![](screenshots/atlantic.jpg) |
 | 26 °C fresh water, tiled competition pool, no current | 22 °C reef lagoon, sand and coral, gentle swell | −1.5 °C under the sea ice, dim light, marine snow | 12 °C green murky water, kelp, 0.17 m/s current and chop |
 
 The water is physical, not just a skin: density comes from temperature and salinity (EOS-80),
@@ -35,7 +36,7 @@ and waves really push you around.
 
 ## Choose your vehicle
 
-![Mission setup](game/screenshots/setup.jpg)
+![Mission setup](screenshots/setup.jpg)
 
 | Vehicle | Build | Character |
 |---|---|---|
@@ -62,7 +63,7 @@ thrusters and drag, not typed in.
 
 | Gate | Torpedo board | Bin (down camera) |
 |---|---|---|
-| ![](game/screenshots/gate.jpg) | ![](game/screenshots/torpedo-board.jpg) | ![](game/screenshots/bin.jpg) |
+| ![](screenshots/gate.jpg) | ![](screenshots/torpedo-board.jpg) | ![](screenshots/bin.jpg) |
 
 **Rules enforced like the real competition:** the gate must come first; surfacing anywhere
 except inside the octagon is a *breach* and ends the run; starting a new run forfeits the
@@ -75,13 +76,13 @@ Shark, sawfish, torpedo-board and bin pictures come from the RoboSub 2025 Team H
 
 ## Multiplayer
 
-![Four players, split screen](game/screenshots/split-screen.jpg)
+![Four players, split screen](screenshots/split-screen.jpg)
 
 Up to 4 vehicles in the same water. Each seat can be *Keyboard left*, *Keyboard right*,
 *Gamepad 1–4* or a *CPU autopilot*. Two, three or four viewports; with three players the
 fourth quarter is a spectator camera. Vehicles bump into each other.
 
-![Results](game/screenshots/results.jpg)
+![Results](screenshots/results.jpg)
 
 ## Controls
 
@@ -105,20 +106,23 @@ pointing at the 30 kHz (octagon) and 25 kHz (torpedo) pingers, a mini-map and yo
 
 ```bash
 npm install
-npm run build:game     # -> dist/duburi-robosub.html and docs/game/index.html
-npm run test:game      # headless: physics, rules, full CPU runs in every water
-npm test               # the simulator's own 185 tests
-node game/tests/e2e.mjs out/   # browser smoke test with screenshots (needs Playwright + Chromium)
+npm run build      # -> dist/duburi-robosub.html and docs/index.html
+npm test           # headless: physics, rules, full CPU runs in every water
+npm run e2e        # browser smoke test with screenshots (needs Playwright + Chromium)
 ```
 
 ```
-game/
-  src/sim/      vehicle physics, course layout, task judging, autopilot   (no graphics, runs in node)
-  src/render/   three.js scenery, course elements, vehicle models
-  src/ui/       menus, HUD, keyboard / gamepad input, sound
-  assets/       handbook pictures
-  tests/        node tests + browser smoke test
-src/            the DUBURI ROV simulator (physics, ArduSub port, CFD) — see SIMULATOR.md
+src/
+  main.js       entry: renderer, split screen, game loop
+  sim/          vehicles, course layout, task judging, autopilot (no graphics, runs in node)
+  render/       three.js scenery, course elements, vehicle models
+  ui/           menus, HUD, keyboard / gamepad input, sound
+  physics/ alloc/ core/ hydro/   from the DUBURI simulator: water, thrusters, allocation, maths
+assets/         DUBURI logo and the handbook pictures
+tests/          node tests + browser smoke test
+dist/           the built game (one HTML file)
+docs/           the same file for GitHub Pages
+screenshots/    pictures for this README
 ```
 
 ## Credits

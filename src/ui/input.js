@@ -1,176 +1,100 @@
-// Pilot input: gamepad (Gamepad API, standard mapping), keyboard and touch
-// sticks, turned into MAVLink MANUAL_CONTROL fields the way QGroundControl
-// sends them (x fwd, y lateral, z throttle 0..1000, r yaw, buttons in SDL order).
+// Keyboard (two layouts on one keyboard) and gamepads. Each player is bound
+// to one device; read(device) returns the analogue axes and the action
+// buttons that were pressed since the last read (edge-triggered).
+// Gamepads use the ArduSub / QGroundControl default stick layout: left stick
+// = heave + yaw, right stick = surge + sway.
 
-const FLIGHT_KEYS = {
-  KeyW: ['x', 1], KeyS: ['x', -1], KeyA: ['r', -1], KeyD: ['r', 1], KeyQ: ['y', -1], KeyE: ['y', 1],
-  KeyR: ['z', 1], KeyF: ['z', -1], Space: ['z', 1], KeyC: ['z', -1],
-  ArrowUp: ['x', 1], ArrowDown: ['x', -1], ArrowLeft: ['y', -1], ArrowRight: ['y', 1],
-  KeyI: ['s', 1], KeyK: ['s', -1], KeyJ: ['t', -1], KeyL: ['t', 1],
+export const DEVICES = [
+  { id: 'kbA', label: 'Keyboard — left (WASD)' },
+  { id: 'kbB', label: 'Keyboard — right (arrows)' },
+  { id: 'pad0', label: 'Gamepad 1' },
+  { id: 'pad1', label: 'Gamepad 2' },
+  { id: 'pad2', label: 'Gamepad 3' },
+  { id: 'pad3', label: 'Gamepad 4' },
+  { id: 'cpu', label: 'CPU (autopilot)' },
+];
+
+export const KEYMAPS = {
+  kbA: {
+    axes: { surge: ['KeyW', 'KeyS'], yaw: ['KeyD', 'KeyA'], sway: ['KeyE', 'KeyQ'], heave: ['KeyR', 'KeyF'], roll: ['KeyX', 'KeyZ'], pitch: ['KeyT', 'KeyG'] },
+    actions: { marker: 'KeyV', torpedo: 'KeyB', grip: 'KeyC', camera: 'Digit1', depthHold: 'Digit2', endRun: 'Digit3', restart: 'Digit4' },
+  },
+  kbB: {
+    axes: { surge: ['ArrowUp', 'ArrowDown'], yaw: ['ArrowRight', 'ArrowLeft'], sway: ['KeyL', 'KeyJ'], heave: ['KeyI', 'KeyK'], roll: ['KeyO', 'KeyU'], pitch: ['KeyY', 'KeyH'] },
+    actions: { marker: 'KeyN', torpedo: 'KeyM', grip: 'Comma', camera: 'Digit7', depthHold: 'Digit8', endRun: 'Digit9', restart: 'Digit0' },
+  },
 };
 
-export class InputManager {
-  constructor(app) {
-    this.app = app;
-    this.keys = new Set();
-    this.axesKb = { x: 0, y: 0, z: 0, r: 0, s: 0, t: 0 };
-    this.touch = { lx: 0, ly: 0, rx: 0, ry: 0, active: false };
-    this.gamepadIndex = null;
-    this.gamepadName = null;
-    this.gamepadBlocked = false;
-    this.lastPadButtons = [];
-    this.source = 'keyboard';
-    window.addEventListener('keydown', (e) => this.onKey(e, true));
-    window.addEventListener('keyup', (e) => this.onKey(e, false));
-    window.addEventListener('blur', () => this.keys.clear());
-    // starting to type in a field drops held flight keys (their keyup may never come to us)
-    window.addEventListener('focusin', (e) => { if (isTextEntry(e.target)) this.keys.clear(); });
-    try {
-      window.addEventListener('gamepadconnected', (e) => { this.gamepadIndex = e.gamepad.index; this.gamepadName = e.gamepad.id; this.app.toast?.(`Controller connected: ${shortName(e.gamepad.id)}`, 'good'); });
-      window.addEventListener('gamepaddisconnected', (e) => { if (this.gamepadIndex === e.gamepad.index) { this.gamepadIndex = null; this.gamepadName = null; this.app.toast?.('Controller disconnected', 'bad'); } });
-    } catch { /* ignore */ }
+export const HELP = {
+  kbA: [['W / S', 'forward / back'], ['A / D', 'turn left / right'], ['Q / E', 'strafe left / right'], ['R / F', 'up / down'], ['Z / X', 'roll (gate style)'], ['T / G', 'pitch (gate style)'], ['V', 'drop marker'], ['B', 'fire torpedo'], ['C', 'gripper open / close'], ['1', 'camera: chase / front / down'], ['2', 'depth hold on / off'], ['3', 'end run (keep points)'], ['4', 'new run (forfeit points)']],
+  kbB: [['↑ / ↓', 'forward / back'], ['← / →', 'turn left / right'], ['J / L', 'strafe left / right'], ['I / K', 'up / down'], ['U / O', 'roll (gate style)'], ['Y / H', 'pitch (gate style)'], ['N', 'drop marker'], ['M', 'fire torpedo'], [',', 'gripper open / close'], ['7', 'camera'], ['8', 'depth hold'], ['9', 'end run'], ['0', 'new run']],
+  pad: [['Left stick ↕', 'up / down'], ['Left stick ↔', 'turn'], ['Right stick ↕', 'forward / back'], ['Right stick ↔', 'strafe'], ['LB / RB', 'roll'], ['D-pad ↕', 'pitch'], ['A', 'drop marker'], ['B', 'fire torpedo'], ['X', 'gripper'], ['Y', 'camera'], ['Back / View', 'depth hold'], ['L3', 'end run'], ['R3', 'new run'], ['Start', 'pause']],
+};
+
+const PAD_ACTIONS = { 0: 'marker', 1: 'torpedo', 2: 'grip', 3: 'camera', 8: 'depthHold', 10: 'endRun', 11: 'restart', 9: 'pause' };
+
+export class Input {
+  constructor(target = window) {
+    this.down = new Set();
+    this.pressed = new Set();
+    this.padPrev = {};
+    this.onKey = (e) => {
+      if (e.target && (e.target.tagName === 'INPUT' || e.target.tagName === 'SELECT')) return;
+      const k = e.code;
+      if (e.type === 'keydown') {
+        if (!this.down.has(k)) this.pressed.add(k);
+        this.down.add(k);
+        if (k.startsWith('Arrow') || k === 'Space' || k === 'Tab') e.preventDefault();
+      } else this.down.delete(k);
+    };
+    this.onBlur = () => this.down.clear();
+    target.addEventListener('keydown', this.onKey);
+    target.addEventListener('keyup', this.onKey);
+    window.addEventListener('blur', this.onBlur);
   }
 
-  // a text-like field has the keyboard: typing goes there, not to the vehicle
-  typing() {
-    const a = document.activeElement;
-    return isTextEntry(a);
-  }
+  consume(code) { const had = this.pressed.has(code); this.pressed.delete(code); return had; }
+  endFrame() { this.pressed.clear(); }
 
-  onKey(e, down) {
-    const code = e.code;
-    // a release always counts, wherever the focus is (a key held while focus moves must not stick)
-    if (!down) { this.keys.delete(code); return; }
-    if (this.typing()) return;
-    const a = document.activeElement;
-    const tag = a?.tagName;
-    const control = tag === 'SELECT' || tag === 'BUTTON' || tag === 'INPUT' || tag === 'A';
-    // Enter / Backspace on a focused button or menu belong to it (dialogs, toggles)
-    if (control && (code === 'Enter' || code === 'NumpadEnter' || code === 'Backspace')) return;
-    // a focused select, button, slider or checkbox would turn W/A/S/D, arrows, Space and digits into
-    // its own navigation (the mode select changes flight mode on letters): flight keys win
-    const isFlight = code in FLIGHT_KEYS || code === 'ShiftLeft' || code === 'ShiftRight';
-    if (control && (isFlight || /^Digit[0-9]$/.test(code) || code === 'Equal' || code === 'Minus')) { if (!code.startsWith('Shift')) e.preventDefault(); a.blur?.(); }
-    if (!e.repeat) {
-      const handled = this.app.hotkey?.(code, e);
-      if (handled) { e.preventDefault(); return; }
+  pads() { return navigator.getGamepads ? Array.from(navigator.getGamepads()).filter(Boolean) : []; }
+
+  read(device) {
+    const out = { axes: { surge: 0, sway: 0, heave: 0, yaw: 0, roll: 0, pitch: 0 }, actions: [] };
+    const km = KEYMAPS[device];
+    if (km) {
+      for (const [ax, [pos, neg]] of Object.entries(km.axes)) out.axes[ax] = (this.down.has(pos) ? 1 : 0) - (this.down.has(neg) ? 1 : 0);
+      // hold Shift (left) / right Shift for fine control
+      if ((device === 'kbA' && this.down.has('ShiftLeft')) || (device === 'kbB' && this.down.has('ShiftRight'))) for (const k in out.axes) out.axes[k] *= 0.35;
+      for (const [act, code] of Object.entries(km.actions)) if (this.pressed.has(code)) out.actions.push(act);
+      return out;
     }
-    if (isFlight) {
-      this.keys.add(code);
-      if (code.startsWith('Arrow') || code === 'Space') e.preventDefault();
+    if (device.startsWith('pad')) {
+      const idx = +device.slice(3);
+      const pad = this.pads().find((p) => p.index === idx) ?? this.pads()[idx];
+      if (!pad) return out;
+      const dz = (v) => (Math.abs(v) < 0.12 ? 0 : (v - Math.sign(v) * 0.12) / 0.88);
+      const a = pad.axes;
+      out.axes.heave = -dz(a[1] || 0);
+      out.axes.yaw = dz(a[0] || 0);
+      out.axes.surge = -dz(a[3] || 0);
+      out.axes.sway = dz(a[2] || 0);
+      const b = (i) => (pad.buttons[i] ? pad.buttons[i].value > 0.5 || pad.buttons[i].pressed : false);
+      out.axes.roll = (b(5) ? 1 : 0) - (b(4) ? 1 : 0);
+      out.axes.pitch = (b(12) ? 1 : 0) - (b(13) ? 1 : 0);
+      // triggers also work for up / down
+      const lt = pad.buttons[6]?.value || 0, rt = pad.buttons[7]?.value || 0;
+      if (Math.abs(out.axes.heave) < 0.05) out.axes.heave = rt - lt;
+      const prev = this.padPrev[device] || [];
+      const now = pad.buttons.map((x) => x.pressed);
+      for (const [i, act] of Object.entries(PAD_ACTIONS)) if (now[i] && !prev[i]) out.actions.push(act);
+      this.padPrev[device] = now;
     }
+    return out;
   }
 
-  bindStick(el, side) {
-    const knob = el.querySelector('i');
-    let id = null;
-    const set = (e) => {
-      const r = el.getBoundingClientRect();
-      let x = ((e.clientX - r.left) / r.width) * 2 - 1, y = ((e.clientY - r.top) / r.height) * 2 - 1;
-      const l = Math.hypot(x, y);
-      if (l > 1) { x /= l; y /= l; }
-      knob.style.transform = `translate(${x * 40}px, ${y * 40}px)`;
-      if (side === 'left') { this.touch.lx = x; this.touch.ly = y; } else { this.touch.rx = x; this.touch.ry = y; }
-      this.touch.active = true;
-    };
-    el.addEventListener('pointerdown', (e) => { id = e.pointerId; el.setPointerCapture(id); set(e); });
-    el.addEventListener('pointermove', (e) => { if (e.pointerId === id) set(e); });
-    const end = (e) => {
-      if (e.pointerId !== id) return;
-      id = null; knob.style.transform = '';
-      if (side === 'left') { this.touch.lx = 0; this.touch.ly = 0; } else { this.touch.rx = 0; this.touch.ry = 0; }
-    };
-    el.addEventListener('pointerup', end);
-    el.addEventListener('pointercancel', end);
-  }
-
-  readGamepad() {
-    let pads;
-    try { pads = navigator.getGamepads ? navigator.getGamepads() : []; }
-    catch { this.gamepadBlocked = true; return null; }
-    let pad = null;
-    if (this.gamepadIndex !== null && pads[this.gamepadIndex]) pad = pads[this.gamepadIndex];
-    else for (const p of pads || []) if (p && p.connected) { pad = p; this.gamepadIndex = p.index; this.gamepadName = p.id; break; }
-    return pad;
-  }
-
-  // returns MANUAL_CONTROL fields; dt for keyboard ramps
-  sample(dt, cfg) {
-    const jc = cfg.joystick;
-    const dz = jc.deadzone ?? 0.06, expo = jc.expo ?? 0;
-    const shape = (v) => {
-      const a = Math.abs(v);
-      if (a < dz) return 0;
-      let s = (a - dz) / (1 - dz);
-      s = (1 - expo) * s + expo * s * s * s;
-      return Math.sign(v) * Math.min(1, s);
-    };
-    // keyboard: ramp towards key targets
-    const target = { x: 0, y: 0, z: 0, r: 0, s: 0, t: 0 };
-    for (const k of this.keys) { const m = FLIGHT_KEYS[k]; if (m) target[m[0]] += m[1]; }
-    const ramp = 1 - Math.exp(-dt * 5); // first-order ramp, same response at any frame rate
-    for (const k of Object.keys(target)) this.axesKb[k] += (Math.max(-1, Math.min(1, target[k])) - this.axesKb[k]) * ramp;
-    const kbActive = Object.values(this.axesKb).some((v) => Math.abs(v) > 0.01);
-    let x = this.axesKb.x, y = this.axesKb.y, z = this.axesKb.z, r = this.axesKb.r, s = this.axesKb.s, t = this.axesKb.t;
-    let buttons = 0;
-    const pad = this.readGamepad();
-    this.padState = null;
-    if (pad) {
-      const ax = (m) => (m && pad.axes[m.axis] !== undefined ? (m.invert ? -1 : 1) * pad.axes[m.axis] : 0);
-      const gx = shape(ax(jc.axes.x)), gy = shape(ax(jc.axes.y)), gz = shape(ax(jc.axes.z)), gr = shape(ax(jc.axes.r));
-      const padActive = Math.abs(gx) + Math.abs(gy) + Math.abs(gz) + Math.abs(gr) > 0;
-      if (padActive || !kbActive) { x = gx; y = gy; z = gz; r = gr; }
-      const trig = (b) => (pad.buttons[b] ? pad.buttons[b].value : 0);
-      const lt = trig(6), rt = trig(7);
-      for (const [side, v] of [['left', lt], ['right', rt]]) {
-        const d = triggerContribution(jc.triggers[side], v, side);
-        s += d.s; t += d.t; z += d.z;
-      }
-      const map = jc.buttonMap || {};
-      pad.buttons.forEach((b, i) => { if (b.pressed && map[i] !== undefined && map[i] >= 0 && map[i] < 32) buttons |= 1 << map[i]; });
-      this.padState = { axes: Array.from(pad.axes), buttons: pad.buttons.map((b) => b.value), id: pad.id };
-      this.source = padActive ? 'gamepad' : kbActive ? 'keyboard' : this.gamepadName ? 'gamepad' : 'keyboard';
-    } else this.source = this.touch.active ? 'touch' : 'keyboard';
-    if (this.touch.active && (this.touch.lx || this.touch.ly || this.touch.rx || this.touch.ry)) {
-      r = shape(this.touch.lx); z = shape(-this.touch.ly); y = shape(this.touch.rx); x = shape(-this.touch.ry);
-    }
-    // keyboard Shift presses the joystick button whose BTNn_FUNCTION is shift (k_shift), if any
-    if (this.keys.has('ShiftLeft') || this.keys.has('ShiftRight')) { const b = shiftButtonIndex(cfg.params); if (b >= 0) buttons |= 1 << b; }
-    const cl = (v) => Math.max(-1, Math.min(1, v));
-    return {
-      x: Math.round(cl(x) * 1000), y: Math.round(cl(y) * 1000), z: Math.round(500 + cl(z) * 500), r: Math.round(cl(r) * 1000),
-      s: Math.round(cl(s) * 400), t: Math.round(cl(t) * 400), buttons: buttons >>> 0,
-    };
+  dispose() {
+    window.removeEventListener('keydown', this.onKey);
+    window.removeEventListener('keyup', this.onKey);
+    window.removeEventListener('blur', this.onBlur);
   }
 }
-
-// A focused element that takes typed text (not selects, buttons, checkboxes or sliders)
-export function isTextEntry(a) {
-  if (!a) return false;
-  if (a.isContentEditable || a.tagName === 'TEXTAREA') return true;
-  if (a.tagName !== 'INPUT') return false;
-  return !/^(button|checkbox|radio|range|color|file|submit|reset|image)$/i.test(a.type || 'text');
-}
-// Gamepad trigger (0..1) assigned to a function: left trigger is the negative side of a pitch/roll
-// pair, while Ascend/Descend act the same on either trigger.
-export function triggerContribution(fn, v, side) {
-  const d = { s: 0, t: 0, z: 0 };
-  const sv = side === 'left' ? -v : v;
-  if (fn === 'pitch') d.s = sv; else if (fn === 'roll') d.t = sv; else if (fn === 'up') d.z = v; else if (fn === 'down') d.z = -v;
-  return d;
-}
-// first joystick button with BTNn_FUNCTION = 1 (shift), as joystick.cpp:71-75 detects it; -1 if none
-export function shiftButtonIndex(P = {}) {
-  for (let i = 0; i < 32; i++) if ((P[`BTN${i}_FUNCTION`] ?? (i === 5 ? 1 : 0)) === 1) return i;
-  return -1;
-}
-export function shortName(id = '') {
-  const m = /^(.*?)\s*\(/.exec(id);
-  return (m ? m[1] : id).slice(0, 40) || 'Gamepad';
-}
-export const KEY_HELP = [
-  ['W / S', 'Forward / back'], ['A / D', 'Yaw left / right'], ['Q / E', 'Strafe left / right'], ['R / F (Space / C)', 'Ascend / descend'],
-  ['I / K', 'Pitch input (6-DOF)'], ['J / L', 'Roll input (6-DOF)'], ['Enter', 'Arm / disarm'], ['1-6', 'Manual, Stabilize, Depth hold, Acro, Position hold, Surface'],
-  ['+ / −', 'Pilot gain'], ['V', 'Next camera'], ['G', 'Graphs'], ['P', 'Pause'], ['Backspace', 'Reset vehicle'], ['Shift', 'Presses the joystick button set to shift (BTNn_FUNCTION = 1)'],
-  ['Flight keys', 'Work whenever no text field has the focus (a focused menu or button lets go of them)'],
-];
