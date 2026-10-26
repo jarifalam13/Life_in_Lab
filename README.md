@@ -23,6 +23,13 @@ unchanged from the [DUBURI simulator](https://github.com/jarifalamclaude-max/sim
 Chrome, Edge or Firefox with WebGL2. Gamepads (PlayStation / Xbox) work in Chrome and Edge.
 If a laptop struggles, set *Graphics* to Medium or Low in the pause menu.
 
+## Promo video
+
+[![Life as Duburi — promo video (40 s)](screenshots/promo.jpg)](promo/life-as-duburi-promo.mp4)
+
+[▶ Watch the 40-second promo](promo/life-as-duburi-promo.mp4) — recorded frame by frame from the game
+itself (CPU autopilots flying the course), with an original synthesised soundtrack.
+
 ## Join like on a console
 
 ![Lobby](screenshots/lobby.jpg)
@@ -253,6 +260,15 @@ screenshots/    pictures for this README
 | `game.test.mjs` | Node tests (`npm test`): physics, buoyancy, rules, skip / forfeit / leave, depth, full CPU runs for every vehicle and water. |
 | `e2e.mjs` | Browser test with screenshots: menus, all waters, 1–4 players, pause menu, lobby join, leave, forfeit. |
 | `controls-e2e.mjs` | Browser test with a simulated DualSense: join, layout screen, button and key re-binding. |
+
+### `promo/` — the promo video
+
+| File | What it is for |
+|---|---|
+| `life-as-duburi-promo.mp4` | The 40-second promo video (1280×720, 30 fps). |
+| `music.mp3` | Its soundtrack: an original 120 BPM track, synthesised by `music.py`. |
+| `music.py` | Makes the soundtrack (Python + numpy): drums, bass, arpeggio, risers and impacts timed to the cuts. |
+| `capture.mjs` | Records the video frame by frame from the built game (Playwright + Chromium) with the captions; the ffmpeg command to join frames and music is at its top. |
 
 ### `screenshots/`
 

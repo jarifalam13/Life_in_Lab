@@ -3,3 +3,5 @@ node_modules/
 .DS_Store
 /tmp/
 dist/e2e/
+promo/frames/
+promo/music.wav
