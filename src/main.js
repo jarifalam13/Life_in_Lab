@@ -442,7 +442,7 @@ class App {
 
   // the always-visible Quit button: ask first
   confirmQuit() {
-    if (this.state !== 'game' || !this.game) return;
+    if (this.state !== 'game' || !this.game || this.game.over) return;
     this.paused = true;
     const o = this.overlay(`<header><h2>Quit the match?</h2></header><div class="scroll"><p>The match ends for everyone and you go back to the lobby.</p>
       <div class="pause-menu"><button class="mi" data-nav data-a="no"><b>No, keep playing</b></button><button class="mi bad" data-nav data-a="yes"><b>Yes, quit</b></button></div></div>`, { owner: -1, onBack: () => this.resume() });
@@ -574,7 +574,7 @@ class App {
     this.hud.update(dt);
     this.renderer.shadowMap.needsUpdate = true;
     for (const v of this.views) this.renderView(v, dt);
-    if (g.over && !this.overShown) { this.overShown = true; setTimeout(() => this.showResults(), 2500); }
+    if (g.over && !this.overShown) { this.overShown = true; setTimeout(() => { if (this.game === g && this.state === 'game') this.showResults(); }, 2500); }
   }
 
   events() {

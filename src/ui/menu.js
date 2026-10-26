@@ -29,7 +29,10 @@ export function defaultSetup() {
 function loadSetup() {
   try {
     const s = JSON.parse(localStorage.getItem(STORE));
-    if (s && Array.isArray(s.slots) && s.slots.length === 4 && SCENARIOS[s.scenario] && s.slots.every((x) => BOTS[x.bot])) return { ...defaultSetup(), ...s };
+    if (s && Array.isArray(s.slots) && s.slots.length === 4 && s.slots.every((x) => BOTS[x.bot])) {
+      // a water that no longer exists (e.g. an older save) falls back to the pool; the rest is kept
+      return { ...defaultSetup(), ...s, scenario: SCENARIOS[s.scenario] ? s.scenario : 'pool' };
+    }
   } catch { /* storage unavailable */ }
   return defaultSetup();
 }

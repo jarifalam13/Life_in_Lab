@@ -7,7 +7,7 @@ import { Game, POINTS } from '../src/sim/game.js';
 import { Autopilot } from '../src/sim/autopilot.js';
 import { DT } from '../src/sim/vehicle.js';
 import { BOTS, BOT_ORDER } from '../src/sim/bots.js';
-import { SCENARIO_ORDER } from '../src/sim/scenarios.js';
+import { SCENARIO_ORDER, SCENARIOS } from '../src/sim/scenarios.js';
 import { botStats } from '../src/sim/stats.js';
 import { boardLocal } from '../src/sim/course.js';
 
@@ -190,4 +190,9 @@ test('a player can leave; the others keep playing and the match ends when everyo
   g.action(0, 'leave');
   run(g, 3);
   assert.ok(g.over);
+});
+
+test('exactly three waters: pool, Pacific, Arctic (the Atlantic was removed)', () => {
+  assert.deepEqual(SCENARIO_ORDER, ['pool', 'pacific', 'arctic']);
+  assert.deepEqual(Object.keys(SCENARIOS).sort(), ['arctic', 'pacific', 'pool']);
 });
