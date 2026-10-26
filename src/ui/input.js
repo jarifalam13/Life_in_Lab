@@ -17,18 +17,18 @@ export const DEVICES = [
 export const KEYMAPS = {
   kbA: {
     axes: { surge: ['KeyW', 'KeyS'], yaw: ['KeyD', 'KeyA'], sway: ['KeyE', 'KeyQ'], heave: ['KeyR', 'KeyF'], roll: ['KeyX', 'KeyZ'], pitch: ['KeyT', 'KeyG'] },
-    actions: { marker: 'KeyV', torpedo: 'KeyB', grip: 'KeyC', camera: 'Digit1', depthHold: 'Digit2', endRun: 'Digit3', restart: 'Digit4' },
+    actions: { marker: 'KeyV', torpedo: 'KeyB', grip: 'KeyC', camera: 'Digit1', depthHold: 'Digit2', endRun: 'Digit3', restart: 'Digit4', skip: 'Digit5', pause: 'Tab' },
   },
   kbB: {
     axes: { surge: ['ArrowUp', 'ArrowDown'], yaw: ['ArrowRight', 'ArrowLeft'], sway: ['KeyL', 'KeyJ'], heave: ['KeyI', 'KeyK'], roll: ['KeyO', 'KeyU'], pitch: ['KeyY', 'KeyH'] },
-    actions: { marker: 'KeyN', torpedo: 'KeyM', grip: 'Comma', camera: 'Digit7', depthHold: 'Digit8', endRun: 'Digit9', restart: 'Digit0' },
+    actions: { marker: 'KeyN', torpedo: 'KeyM', grip: 'Comma', camera: 'Digit7', depthHold: 'Digit8', endRun: 'Digit9', restart: 'Digit0', skip: 'Minus', pause: 'Backspace' },
   },
 };
 
 export const HELP = {
-  kbA: [['W / S', 'forward / back'], ['A / D', 'turn left / right'], ['Q / E', 'strafe left / right'], ['R / F', 'up / down'], ['Z / X', 'roll (gate style)'], ['T / G', 'pitch (gate style)'], ['V', 'drop marker'], ['B', 'fire torpedo'], ['C', 'gripper open / close'], ['1', 'camera: chase / front / down'], ['2', 'depth hold on / off'], ['3', 'end run (keep points)'], ['4', 'new run (forfeit points)']],
-  kbB: [['↑ / ↓', 'forward / back'], ['← / →', 'turn left / right'], ['J / L', 'strafe left / right'], ['I / K', 'up / down'], ['U / O', 'roll (gate style)'], ['Y / H', 'pitch (gate style)'], ['N', 'drop marker'], ['M', 'fire torpedo'], [',', 'gripper open / close'], ['7', 'camera'], ['8', 'depth hold'], ['9', 'end run'], ['0', 'new run']],
-  pad: [['Left stick ↕', 'up / down'], ['Left stick ↔', 'turn'], ['Right stick ↕', 'forward / back'], ['Right stick ↔', 'strafe'], ['LB / RB', 'roll'], ['D-pad ↕', 'pitch'], ['A', 'drop marker'], ['B', 'fire torpedo'], ['X', 'gripper'], ['Y', 'camera'], ['Back / View', 'depth hold'], ['L3', 'end run'], ['R3', 'new run'], ['Start', 'pause']],
+  kbA: [['W / S', 'forward / back'], ['A / D', 'turn left / right'], ['Q / E', 'strafe left / right'], ['R / F', 'up / down'], ['Z / X', 'roll (gate style)'], ['T / G', 'pitch (gate style)'], ['V', 'drop marker'], ['B', 'fire torpedo'], ['C', 'gripper open / close'], ['1', 'camera: chase / front / down'], ['2', 'depth hold on / off'], ['3', 'end run (keep points)'], ['4', 'forfeit: new run (lose points)'], ['5', 'skip the current task'], ['Tab / Esc', 'your pause menu']],
+  kbB: [['↑ / ↓', 'forward / back'], ['← / →', 'turn left / right'], ['J / L', 'strafe left / right'], ['I / K', 'up / down'], ['U / O', 'roll (gate style)'], ['Y / H', 'pitch (gate style)'], ['N', 'drop marker'], ['M', 'fire torpedo'], [',', 'gripper open / close'], ['7', 'camera'], ['8', 'depth hold'], ['9', 'end run'], ['0', 'forfeit: new run'], ['-', 'skip task'], ['Backspace', 'your pause menu']],
+  pad: [['Left stick ↕', 'up / down'], ['Left stick ↔', 'turn'], ['Right stick ↕', 'forward / back'], ['Right stick ↔', 'strafe'], ['LB / RB', 'roll'], ['D-pad ↕', 'pitch'], ['✕ / A', 'drop marker'], ['○ / B', 'fire torpedo'], ['□ / X', 'gripper'], ['△ / Y', 'camera'], ['Share / Back', 'depth hold'], ['L3', 'end run'], ['R3', 'forfeit: new run'], ['Start / Options', 'your pause menu (skip, forfeit, leave)']],
 };
 
 const PAD_ACTIONS = { 0: 'marker', 1: 'torpedo', 2: 'grip', 3: 'camera', 8: 'depthHold', 10: 'endRun', 11: 'restart', 9: 'pause' };
@@ -44,7 +44,7 @@ export class Input {
       if (e.type === 'keydown') {
         if (!this.down.has(k)) this.pressed.add(k);
         this.down.add(k);
-        if (k.startsWith('Arrow') || k === 'Space' || k === 'Tab') e.preventDefault();
+        if (k.startsWith('Arrow') || k === 'Space' || k === 'Tab' || k === 'Backspace') e.preventDefault();
       } else this.down.delete(k);
     };
     this.onBlur = () => this.down.clear();
@@ -88,6 +88,23 @@ export class Input {
       const now = pad.buttons.map((x) => x.pressed);
       for (const [i, act] of Object.entries(PAD_ACTIONS)) if (now[i] && !prev[i]) out.actions.push(act);
       this.padPrev[device] = now;
+    }
+    return out;
+  }
+
+  // New gamepad button presses on every connected pad since the last call
+  // (menus and the join lobby): [{ pad: index, button }]
+  padPresses() {
+    const out = [];
+    this.navPrev = this.navPrev || {};
+    for (const pad of this.pads()) {
+      const prev = this.navPrev[pad.index] || [];
+      const now = pad.buttons.map((b) => b.pressed || b.value > 0.5);
+      // left stick as a d-pad for menus
+      const ax = pad.axes[0] || 0, ay = pad.axes[1] || 0;
+      now[12] = now[12] || ay < -0.6; now[13] = now[13] || ay > 0.6; now[14] = now[14] || ax < -0.6; now[15] = now[15] || ax > 0.6;
+      now.forEach((v, i) => { if (v && !prev[i]) out.push({ pad: pad.index, button: i }); });
+      this.navPrev[pad.index] = now;
     }
     return out;
   }

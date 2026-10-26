@@ -452,7 +452,7 @@ function buildManta(ctx, root, d) {
   };
 }
 
-function buildMinnow(ctx, root, d) {
+function buildDuboMini(ctx, root, d) {
   const { M } = ctx;
   const body = mesh(new THREE.CapsuleGeometry(0.07, 0.2, 6, 18).rotateX(PI / 2), M.team, 'body');
   root.add(body);
@@ -472,7 +472,8 @@ function buildMinnow(ctx, root, d) {
   fm.position.set(0, 0.055, 0.08); root.add(fm);
   const props = addThrusters(ctx, root, d, (t) => {
     if (t.name === 'Lateral') return { size: [0.022, 0.03], tunnel: [0.0705, 0.0705] };
-    if (t.name === 'Vert front') return { size: [0.022, 0.03], tunnel: [0.037, 0.097] };
+    if (t.name === 'Vert front') return { size: [0.022, 0.03], tunnel: [0.057, 0.077] };
+    if (t.name === 'Vert rear') return { size: [0.022, 0.03], tunnel: [0.0605, 0.0805] };
     return {};
   });
   return {
@@ -483,7 +484,7 @@ function buildMinnow(ctx, root, d) {
   };
 }
 
-const BUILDERS = { duburi: buildDuburi, barracuda: buildBarracuda, kraken: buildKraken, manta: buildManta, minnow: buildMinnow };
+const BUILDERS = { duburi: buildDuburi, barracuda: buildBarracuda, kraken: buildKraken, manta: buildManta, dubomini: buildDuboMini };
 
 // Merge every mesh that never moves relative to the hull into one mesh per
 // material: ~100 draw calls per bot become ~10, which matters with four bots

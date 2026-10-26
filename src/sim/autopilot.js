@@ -69,14 +69,14 @@ export class Autopilot {
     // octagon: pick the cup, put it in the cup basket, one rotation, surface, face the chosen image
     const cupPos = () => this.g.items.find((it) => it.kind === 'cup').pos;
     const grip = () => this.p.design.gripper;
-    go(() => [...add2(oct.pos, [1, 0], -2.2), 2.5], { tol: 0.5 });
+    go(() => [...add2(oct.pos, [1, 0], -2.2), oct.tableTop - 1.6], { tol: 0.5 });
     go(() => { const q = cupPos(); return [q[0] - grip()[0], q[1], q[2] - grip()[2] - 0.12]; }, { tol: 0.08, hdg: 0, settle: 1.5, precise: true });
     go(() => { const q = cupPos(); return [q[0] - grip()[0], q[1], q[2] - grip()[2]]; }, { tol: 0.06, hdg: 0, settle: 1.0, precise: true });
     act('grip', 0.6);
     go(() => { const q = cupPos(); return [q[0] - grip()[0], q[1], oct.tableTop - 0.6]; }, { tol: 0.15, hdg: 0 });
     go(() => { const bk = oct.baskets.find((x) => x.item === 'cup'); return [bk.c[0] - grip()[0], bk.c[1], bk.depthTop - 0.25 - grip()[2]]; }, { tol: 0.06, hdg: 0, settle: 1.2, precise: true });
     act('grip', 2.5);
-    go(() => [oct.pos[0], oct.pos[1], 2.0], { tol: 0.3 });
+    go(() => [oct.pos[0], oct.pos[1], Math.min(2.0, oct.tableTop - 1.2)], { tol: 0.3 });
     plan.push({ type: 'spin', turns: 1.15 });
     plan.push({ type: 'surface' });
     plan.push({ type: 'face', fn: () => oct.images.find((im) => im.animal === (this.p.run.chosen || 'shark')).angle });

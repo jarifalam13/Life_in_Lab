@@ -1,4 +1,4 @@
-// Headless tests of the RoboSub game: vehicle physics, task judging by the
+// Headless tests of Life as Duburi: vehicle physics, task judging by the
 // handbook rules and complete autopilot runs for every vehicle and water.
 
 import test from 'node:test';
@@ -134,4 +134,60 @@ test('four vehicles in the same water: every one finishes in each scenario', () 
       assert.ok(p.best > 3000, `${sc} ${p.bot} scored ${p.best}`);
     }
   }
+});
+
+test('every water has its own depth; the floor tasks follow it', () => {
+  for (const [sc, d] of [['pool', 7], ['pacific', 12], ['arctic', 15], ['atlantic', 10]]) {
+    const g = new Game({ scenario: sc, players: [{ bot: 'duburi' }], seed: 2 });
+    assert.equal(g.course.floor, d);
+    assert.ok(Math.abs(g.course.board.depth - (d - 1.6)) < 1e-9);
+  }
+  assert.equal(new Game({ scenario: 'pool', depth: 20, players: [{ bot: 'duburi' }] }).course.floor, 20);
+});
+
+test('Dubo Mini: 5 thrusters, no roll authority, finishes a full run', () => {
+  assert.equal(BOTS.dubomini.thrusters.length, 5);
+  assert.ok(!botStats(BOTS.dubomini).dof.includes('Roll'));
+  const g = new Game({ players: [{ bot: 'dubomini' }], seed: 4, coinFlip: false });
+  const ap = new Autopilot(g, 0);
+  while (!g.over && g.time < 800) { ap.update(DT); g.step(DT); }
+  const r = g.players[0].run;
+  assert.ok(r.gatePassed && r.scores.slalom > 0 && r.scores.octagon > 0, JSON.stringify(r.scores));
+});
+
+test('skip moves through the tasks in order and scores nothing for skipped ones', () => {
+  const g = solo();
+  const p = g.players[0];
+  const seen = [];
+  for (let k = 0; k < 6; k++) { seen.push(g.currentTask(p)); g.action(0, 'skip'); run(g, 0.5); }
+  assert.deepEqual(seen, ['gate', 'slalom', 'bin', 'torpedo', 'octagon', 'home']);
+  assert.equal(p.run.state, 'ended');
+  assert.equal(g.total(p), 0);
+  assert.ok(p.run.chosen === 'shark' || p.run.chosen === 'sawfish');
+});
+
+test('after skipping the gate the next tasks still score', () => {
+  const g = solo();
+  const p = g.players[0], bin = g.course.bin;
+  g.action(0, 'skip'); // gate
+  g.action(0, 'skip'); // slalom -> bin start
+  p.veh.reset([bin.pos[0] - p.design.marker[0], bin.pos[1], g.course.floor - 1.0], bin.heading);
+  run(g, 3);
+  g.action(0, 'marker');
+  run(g, 6);
+  assert.ok(p.run.scores.bin >= POINTS.binAny);
+});
+
+test('a player can leave; the others keep playing and the match ends when everyone is done', () => {
+  const g = new Game({ players: [{ bot: 'duburi' }, { bot: 'manta' }], seed: 3, coinFlip: false });
+  g.action(1, 'leave');
+  assert.ok(g.players[1].left);
+  assert.equal(g.players[0].run.state, 'running');
+  run(g, 3);
+  assert.ok(!g.over);
+  g.action(0, 'forfeit');
+  assert.equal(g.players[0].run.state, 'running');
+  g.action(0, 'leave');
+  run(g, 3);
+  assert.ok(g.over);
 });

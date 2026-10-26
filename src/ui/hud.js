@@ -7,6 +7,7 @@ import { ARENA } from '../sim/course.js';
 import { SCENARIOS } from '../sim/scenarios.js';
 
 const h = (tag, cls, html) => { const e = document.createElement(tag); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
 const fmtTime = (s) => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
 const deg = (r) => ((r * 180) / Math.PI + 360) % 360;
 
@@ -17,7 +18,11 @@ export class HUD {
     this.root = h('div', 'hud');
     root.appendChild(this.root);
     this.top = h('div', 'hud-clock');
-    this.top.innerHTML = `${logoUrl ? `<img src="${logoUrl}" alt="DUBURI">` : ''}<div><b class="clock">15:00</b><span>${SCENARIOS[game.scenario].name} · RoboSub 2025</span></div>`;
+    this.top.innerHTML = `${logoUrl ? `<img src="${logoUrl}" alt="DUBURI">` : ''}<div><b class="clock">15:00</b><span>${SCENARIOS[game.scenario].name} · ${game.depth} m deep</span></div>`;
+    // leaderboard for the TV-camera quarter (3 players)
+    this.board = h('div', 'lboard');
+    this.board.hidden = true;
+    this.root.appendChild(this.board);
     this.clock = this.top.querySelector('.clock');
     this.root.appendChild(this.top);
     this.icons = { shark: animalIcon('shark', 28), sawfish: animalIcon('sawfish', 28) };
@@ -83,9 +88,10 @@ export class HUD {
     this.acc += dt;
     const full = this.acc > 1 / 20;
     if (full) this.acc = 0;
+    if (full && this.boardRect) this.drawBoard();
     this.panels.forEach((P, i) => {
       const p = P.p, v = p.veh, r = p.run;
-      if (!full) return;
+      if (!full || P.el.hidden) return;
       const [roll, pitch, yaw] = v.euler();
       P.q('.att-g').setAttribute('transform', `rotate(${(-roll * 180) / Math.PI}) translate(0 ${pitch * 40})`);
       for (let k = 0; k < 2; k++) {
@@ -122,7 +128,7 @@ export class HUD {
         P.banner.hidden = false;
         const bad = r.reason.startsWith('Breach');
         P.banner.className = `pp-banner ${bad ? 'bad' : ''}`;
-        P.banner.innerHTML = `<b>${bad ? 'BREACH' : r.finished ? 'RUN COMPLETE' : 'RUN ENDED'}</b><span></span><em>${total.toLocaleString()} pts</em><small>${g.over ? '' : 'New run: forfeits these points'}</small>`;
+        P.banner.innerHTML = `<b>${bad ? 'BREACH' : r.finished ? 'RUN COMPLETE' : 'RUN ENDED'}</b><span></span><em>${total.toLocaleString()} pts</em><small>${g.over || p.left ? '' : 'Forfeit for a new run: 4 · 0 · R3 · or your pause menu'}</small>`;
         P.banner.querySelector('span').textContent = r.reason;
       } else P.banner.hidden = true;
     });
@@ -170,6 +176,24 @@ export class HUD {
       g.beginPath(); g.moveTo(8, 0); g.lineTo(-5, 5); g.lineTo(-5, -5); g.closePath(); g.fill(); g.stroke();
       g.restore();
     }
+  }
+
+  // place the leaderboard over a viewport rect (or hide it)
+  setBoard(rect) {
+    this.boardRect = rect;
+    this.board.hidden = !rect;
+    if (rect) Object.assign(this.board.style, { left: `${rect.x}px`, top: `${rect.y}px`, width: `${rect.w}px`, height: `${rect.h}px` });
+  }
+
+  drawBoard() {
+    const g = this.game;
+    const names = { gate: 'Gate', slalom: 'Slalom', bin: 'Bin', torpedo: 'Torpedoes', octagon: 'Octagon', home: 'Return home' };
+    const rows = [...g.players].sort((a, b) => Math.max(b.best, g.total(b)) - Math.max(a.best, g.total(a))).map((p, i) => {
+      const r = p.run;
+      const st = p.left ? 'left' : r.state !== 'running' ? (r.finished ? 'done' : 'run ended') : names[g.currentTask(p)];
+      return `<tr style="--pc:${p.color}"><td>${i + 1}</td><td><i class="dot"></i>${esc(p.name)}<small>${esc(p.design.name)}</small></td><td>${st}</td><td><b>${Math.max(p.best, g.total(p)).toLocaleString()}</b></td></tr>`;
+    }).join('');
+    this.board.innerHTML = `<div class="lb-in"><h3>Live standings</h3><table>${rows}</table><p>TV camera follows the leader</p></div>`;
   }
 
   dispose() { this.root.remove(); }

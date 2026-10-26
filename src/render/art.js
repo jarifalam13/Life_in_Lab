@@ -2,7 +2,7 @@
 // sawfish), used for the vinyl prints on the gate, bin, board and octagon.
 
 import * as THREE from 'three';
-// prints from the RoboSub 2025 team handbook figures
+// prints from the competition team handbook figures
 import sharkJpg from '../../assets/shark.jpg';
 import sawfishJpg from '../../assets/sawfish.jpg';
 import binSharkJpg from '../../assets/bin-shark.jpg';

@@ -1,16 +1,16 @@
-// One competition run for 1-4 vehicles in the same water: the clock, the
-// vehicles, the things they drop / fire / carry, and the judging of every
-// task by the RoboSub 2025 handbook rules (sections 3.2 and 4.2).
+// One match for 1-4 vehicles in the same water: the clock, the vehicles, the
+// things they drop / fire / carry, and the judging of every task by the AUV
+// competition handbook rules (sections 3.2 and 4.2).
 //
-// The handbook says the official point breakdown is "to be released"; the
-// values in POINTS are this game's, chosen to keep the handbook's ordering
+// The handbook's official point breakdown is "to be released"; the values in
+// POINTS are this game's, chosen to keep the handbook's ordering
 // (roll / pitch style worth more than yaw, the chosen animal worth more, the
 // correct basket worth more, ...).
 
 import { Environment } from '../physics/environment.js';
 import { RNG } from '../core/rng.js';
 import { wrapPI } from '../core/math.js';
-import { environmentConfig } from './scenarios.js';
+import { environmentConfig, waterDepth } from './scenarios.js';
 import { BOTS } from './bots.js';
 import { Vehicle, DT } from './vehicle.js';
 import { buildCourse, boardLocal, ARENA } from './course.js';
@@ -48,12 +48,14 @@ const ITEM_PHYS = {
 };
 
 export class Game {
-  constructor({ scenario = 'pool', players = [{ name: 'Player 1', bot: 'duburi' }], runMinutes = 15, coinFlip = true, seed = (Math.random() * 1e9) | 0 } = {}) {
+  constructor({ scenario = 'pool', players = [{ name: 'Player 1', bot: 'duburi' }], runMinutes = 15, coinFlip = true, depth = 0, seed = (Math.random() * 1e9) | 0 } = {}) {
     this.scenario = scenario;
     this.seed = seed;
     this.rand = mulberry(seed);
-    this.env = new Environment(environmentConfig(scenario), new RNG(seed + 7));
-    this.course = buildCourse(this.rand);
+    this.depth = waterDepth(scenario, depth);
+    this.arena = { ...ARENA, depth: this.depth };
+    this.env = new Environment(environmentConfig(scenario, this.depth), new RNG(seed + 7));
+    this.course = buildCourse(this.rand, this.depth);
     this.duration = runMinutes * 60;
     this.coinFlip = coinFlip;
     this.time = 0;
@@ -135,8 +137,11 @@ export class Game {
     const p = this.players[i];
     if (!p || this.over) return;
     const r = p.run, v = p.veh;
-    if (what === 'restart') { this.startRun(p); return; }
+    if (p.left) return;
+    if (what === 'restart' || what === 'forfeit') { this.startRun(p); return; }
+    if (what === 'leave') { this.leave(p); return; }
     if (!r || r.state !== 'running') return;
+    if (what === 'skip') { this.skipTask(p); return; }
     if (what === 'depthHold') { v.depthHold = !v.depthHold; v.depthTarget = v.p[2]; this.emit(p, v.depthHold ? 'Depth hold ON' : 'Depth hold OFF (manual)', 0, 'info'); return; }
     if (what === 'endRun') { this.endRun(p, 'Run ended by team lead'); return; }
     if (what === 'marker') {
@@ -185,23 +190,84 @@ export class Game {
     }
   }
 
+  // ------------------------------------------------------------ skip / leave
+  // The task a player is on: the first one in course order not done or skipped.
+  currentTask(p) {
+    const r = p.run, sk = r.skipped || (r.skipped = new Set());
+    if (!r.gatePassed) return 'gate';
+    if (!sk.has('slalom') && r.slalomBest.filter((x) => x > 0).length < 3) return 'slalom';
+    if (!sk.has('bin') && r.markers > 0) return 'bin';
+    if (!sk.has('torpedo') && r.torpedoes > 0) return 'torpedo';
+    if (!sk.has('octagon') && r.octSurface === 0) return 'octagon';
+    return 'home';
+  }
+
+  // where a vehicle is put to start a task (NED position + heading)
+  taskStart(task) {
+    const c = this.course, add2 = (p, d, k) => [p[0] + d[0] * k, p[1] + d[1] * k];
+    if (task === 'slalom') { const sl = c.slalom; return { pos: [...add2(sl.sets[0].pos, sl.dir, -2.6), (sl.band[0] + sl.band[1]) / 2], hdg: sl.heading }; }
+    if (task === 'bin') { const b = c.bin; return { pos: [...add2(b.pos, b.dir, -2.4), c.floor - 1.2], hdg: b.heading }; }
+    if (task === 'torpedo') { const b = c.board; return { pos: [...add2(b.pos, b.dir, b.farDistance + 0.8), b.depth], hdg: b.heading + Math.PI }; }
+    if (task === 'octagon') { const o = c.octagon; return { pos: [o.pos[0] - 2.6, o.pos[1], o.tableTop - 1.4], hdg: 0 }; }
+    const g = c.gate; // home: north of the gate, facing back through it
+    return { pos: [...add2(g.pos, g.dir, 3), 1.3], hdg: g.heading + Math.PI };
+  }
+
+  // Skip the current task: no points for it, the vehicle is moved to the start
+  // of the next one. Skipping the gate picks an animal at random (no gate points).
+  skipTask(p) {
+    const r = p.run;
+    const task = this.currentTask(p);
+    r.skipped.add(task);
+    if (task === 'home') { r.finished = true; this.endRun(p, 'Run complete — return home skipped'); return; }
+    if (task === 'gate') {
+      r.gatePassed = true;
+      r.gateSkipped = true;
+      r.gateSide = this.rand() < 0.5 ? -1 : 1;
+      r.chosen = r.gateSide === this.course.gate.sharkSide ? 'shark' : 'sawfish';
+      r.gateAttempt = { time: this.time - 60 };
+      r.leftStart = true;
+    }
+    if (r.held) { r.held.holder = null; r.held.state = 'fall'; r.held = null; }
+    const next = this.currentTask(p);
+    const st = this.taskStart(next);
+    p.veh.reset(st.pos, wrapPI(st.hdg));
+    r.gateS = null; r.slalomS = [null, null, null]; r.inGateBuf = false;
+    const names = { gate: 'Gate', slalom: 'Slalom', bin: 'Bin', torpedo: 'Torpedoes', octagon: 'Octagon', home: 'Return home' };
+    this.emit(p, `Skipped ${names[task]}${task === 'gate' ? ` — your animal: ${r.chosen === 'shark' ? 'reef shark' : 'sawfish'}` : ''} → ${names[next]}`, 0, 'warn');
+  }
+
+  // Leave the match: the run ends, the vehicle is taken out of the water.
+  leave(p) {
+    if (p.run.state === 'running') this.endRun(p, 'Left the match');
+    p.left = true;
+    p.veh.reset([this.course.dock.pos[0] - 3, this.course.dock.pos[1] + 30, 0], 0);
+    this.emit(p, `${p.name} left the match`, 0, 'info');
+  }
+
   // ------------------------------------------------------------ simulation
   step(dt = DT) {
     if (this.over) return;
     this.env.step(dt);
     this.time += dt;
-    const vehs = this.players.map((p) => p.veh);
-    for (const p of this.players) {
+    const active = this.players.filter((p) => !p.left);
+    const vehs = active.map((p) => p.veh);
+    for (const p of active) {
       const running = p.run.state === 'running';
       p.veh.step(dt, running);
-      p.touched = collideVehicle(p.veh, this.course, ARENA, vehs.filter((v) => v !== p.veh));
+      p.touched = collideVehicle(p.veh, this.course, this.arena, vehs.filter((v) => v !== p.veh));
       if (running) this.judge(p, dt);
     }
     this.stepItems(dt);
+    // the match ends when the clock runs out, or when nobody has a run going
+    // for a few seconds (time to choose a new run after a breach)
     if (this.time >= this.duration) {
       for (const p of this.players) this.endRun(p, 'Time is up');
       this.over = true;
-    } else if (this.players.every((p) => p.run.state !== 'running')) this.over = true;
+    } else if (this.players.every((p) => p.left || p.run.state !== 'running')) {
+      this.idle = (this.idle || 0) + dt;
+      if (this.idle > (this.players.every((p) => p.left || p.run.finished) ? 2 : 10)) this.over = true;
+    } else this.idle = 0;
   }
 
   stepItems(dt) {

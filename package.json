@@ -1,7 +1,7 @@
 {
   "name": "life-as-duburi",
   "version": "1.0.0",
-  "description": "RoboSub 2025 'Protect the Deep' as a 1-4 player browser game on the DUBURI ROV simulator physics",
+  "description": "Life as Duburi: a 1-4 player underwater robotics game on the DUBURI ROV simulator physics",
   "main": "src/main.js",
   "scripts": {
     "build": "node build.mjs",
@@ -9,9 +9,10 @@
     "e2e": "node tests/e2e.mjs dist/e2e"
   },
   "keywords": [
-    "robosub",
     "auv",
     "rov",
+    "underwater",
+    "robotics",
     "game",
     "threejs",
     "duburi"

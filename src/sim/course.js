@@ -1,16 +1,18 @@
-// The RoboSub 2025 "Protect the Deep" course, laid out in the world NED frame
-// (x north, y east, z down, origin at the still surface in the pool centre).
-// Dimensions follow the team handbook (section 3.2); positions are chosen so
-// no three elements are on a line and the path markers point at the next task.
+// The competition course, laid out in the world NED frame (x north, y east,
+// z down, origin at the still surface in the pool centre). Dimensions follow
+// the AUV competition team handbook (section 3.2); positions are chosen so no
+// three elements are on a line and the path markers point at the next task.
+// Floor-mounted elements follow the water depth; the gate and the octagon
+// float at the surface.
 
 const rot2 = (h) => [Math.cos(h), Math.sin(h)];
 const add2 = (p, d, s) => [p[0] + d[0] * s, p[1] + d[1] * s];
 const perp = (d) => [-d[1], d[0]]; // 90 deg to the right of d (NED, looking down)
 
-export const ARENA = { length: 50, width: 25, depth: 4.8 };
+export const ARENA = { length: 50, width: 25, depth: 7 };
 
-export function buildCourse(rng = Math.random) {
-  const floor = ARENA.depth;
+export function buildCourse(rng = Math.random, depth = ARENA.depth) {
+  const floor = depth;
   const course = { floor, elements: [], obstacles: [] };
 
   // ---- randomised per run (like the judges' set-up) ----
@@ -75,7 +77,7 @@ export function buildCourse(rng = Math.random) {
   course.obstacles.push({ type: 'box', tag: 'bin', c: [bin.pos[0], bin.pos[1], floor - bin.height / 2], h: [bin.plate[0] / 2, bin.plate[1] / 2, bin.height / 2], yaw: bin.heading });
 
   // ---- Task 4: torpedo board, 0.6 m square, facing back toward the bin ----
-  const board = { pos: [6.8, -4.2], depth: 2.3, size: 0.61, sharkTop: boardSharkTop };
+  const board = { pos: [6.8, -4.2], depth: floor - 1.6, size: 0.61, sharkTop: boardSharkTop }; // on a stand 1.3 m off the floor
   board.heading = Math.atan2(bin.pos[1] - board.pos[1], bin.pos[0] - board.pos[0]); // normal points at the approach side
   board.dir = rot2(board.heading);
   board.right = perp(board.dir);
@@ -120,7 +122,7 @@ export function buildCourse(rng = Math.random) {
   // task buffers (3 m spheres around each task, handbook 4.2)
   course.tasks = [
     { id: 'gate', name: 'Collecting Data (Gate)', pos: [gate.pos[0], gate.pos[1], 1.2] },
-    { id: 'slalom', name: 'Navigate the Channel', pos: [slalom.pos[0], slalom.pos[1], 3.9] },
+    { id: 'slalom', name: 'Navigate the Channel', pos: [slalom.pos[0], slalom.pos[1], floor - 0.9] },
     { id: 'bin', name: 'Drop a BRUVS (Bin)', pos: [bin.pos[0], bin.pos[1], floor - 0.3] },
     { id: 'torpedo', name: 'Tagging (Torpedoes)', pos: [board.pos[0], board.pos[1], board.depth] },
     { id: 'octagon', name: 'Ocean Cleanup (Octagon)', pos: [oct.pos[0], oct.pos[1], 0.5] },

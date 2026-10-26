@@ -1,5 +1,5 @@
-// Builds the RoboSub game into one self-contained HTML file:
-//   dist/duburi-robosub.html   open it directly in a browser
+// Builds Life as Duburi into one self-contained HTML file:
+//   dist/life-as-duburi.html   open it directly in a browser
 //   docs/index.html            the same page, served by GitHub Pages
 // Images (DUBURI logo, handbook prints) are inlined as data URLs.
 
@@ -28,8 +28,8 @@ const html = `<!doctype html>
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>DUBURI RoboSub</title>
-<meta name="description" content="RoboSub 2025 'Protect the Deep' as a 1-4 player game on the DUBURI ROV simulator physics: pool, Pacific, Arctic and Atlantic water.">
+<title>Life as Duburi</title>
+<meta name="description" content="Life as Duburi: an underwater robotics game by Team BRACU DUBURI. 1-4 players pilot AUVs through a competition course in a pool, the Pacific, the Arctic or the Atlantic, on the DUBURI ROV simulator physics.">
 <meta name="generator" content="DUBURI Simulator ${version}">
 <link rel="icon" href="${favicon}">
 <link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -37,13 +37,13 @@ const html = `<!doctype html>
 <style>${css}</style>
 </head>
 <body>
-<div id="app"><div class="boot">DUBURI RoboSub · loading…</div></div>
+<div id="app"><div class="boot">Life as Duburi · loading…</div></div>
 <noscript><p style="padding:24px;color:#e3eef3">This game needs JavaScript and WebGL.</p></noscript>
 <script>${js}</script>
 </body>
 </html>
 `;
-for (const out of [join(repo, 'dist/duburi-robosub.html'), join(repo, 'docs/index.html')]) {
+for (const out of [join(repo, 'dist/life-as-duburi.html'), join(repo, 'docs/index.html')]) {
   mkdirSync(dirname(out), { recursive: true });
   writeFileSync(out, html);
 }

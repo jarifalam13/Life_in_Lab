@@ -15,7 +15,7 @@ const scale = (L, k) => L.map((t) => ({ ...t, pos: t.pos.map((v) => v * k) }));
 export const BOTS = {
   duburi: {
     id: 'duburi',
-    name: 'DUBURI Heavy',
+    name: 'Duburi',
     kind: 'Open frame · 8 × T200 vectored 6-DOF',
     blurb: 'Team DUBURI\'s workhorse. Full 6-DOF control, good at everything. Rolls and flips cleanly for gate style.',
     color: '#ffb547',
@@ -89,29 +89,29 @@ export const BOTS = {
     spheres: [[0.12, 0.22, 0, 0.14], [0.12, -0.22, 0, 0.14], [-0.12, 0.22, 0, 0.14], [-0.12, -0.22, 0, 0.14]],
     gripper: [0.32, 0, 0.1], marker: [0, 0, 0.1], torpedo: [0.3, 0.1, 0.02],
   },
-  minnow: {
-    id: 'minnow',
-    name: 'Minnow',
-    kind: 'Mini AUV · 6 small thrusters',
-    blurb: 'Tiny and light. Squeezes through anything, but it is slow and the current pushes it around.',
+  dubomini: {
+    id: 'dubomini',
+    name: 'Dubo Mini',
+    kind: 'Mini AUV · 5 small thrusters',
+    blurb: 'Team DUBURI\'s little one: two drive thrusters, a lateral tunnel and two vertical tunnels. Light, quick to strafe, does pitch flips — but the current pushes it around.',
     color: '#68d391',
-    mass: 4.2, Bnet: 0.6, dims: [0.34, 0.26, 0.16], zB: 0.012,
+    mass: 4.2, Bnet: 0.6, dims: [0.34, 0.26, 0.16], zB: 0.014,
     inertia: [0.03, 0.04, 0.05],
     addedMass: [1.4, 2.2, 3.5, 0.02, 0.025, 0.02],
     dampLin: [5, 7, 10, 0.1, 0.1, 0.08],
     dampQuad: [30, 45, 55, 0.2, 0.2, 0.15],
+    // surge + yaw (two drive thrusters), sway (tunnel), heave + pitch (two vertical tunnels); roll is passive
     thrusters: [
       { name: 'Fwd right', pos: [-0.12, 0.1, 0], axis: [1, 0, 0], hand: 1 },
       { name: 'Fwd left', pos: [-0.12, -0.1, 0], axis: [1, 0, 0], hand: -1 },
       { name: 'Lateral', pos: [0.02, 0, 0], axis: [0, 1, 0], hand: 1 },
-      { name: 'Vert front', pos: [0.12, 0, -0.03], axis: [0, 0, 1], hand: 1 },
-      { name: 'Vert rear-right', pos: [-0.08, 0.1, -0.03], axis: [0, 0, 1], hand: -1 },
-      { name: 'Vert rear-left', pos: [-0.08, -0.1, -0.03], axis: [0, 0, 1], hand: 1 },
+      { name: 'Vert front', pos: [0.12, 0, -0.01], axis: [0, 0, 1], hand: 1 },
+      { name: 'Vert rear', pos: [-0.08, 0, -0.01], axis: [0, 0, 1], hand: -1 },
     ].map((t) => ({ ...t, preset: 'generic-small' })),
     spheres: [[0, 0, 0, 0.17]],
     gripper: [0.19, 0, 0.08], marker: [0, 0, 0.08], torpedo: [0.17, 0, -0.04],
   },
 };
 
-export const BOT_ORDER = ['duburi', 'barracuda', 'kraken', 'manta', 'minnow'];
+export const BOT_ORDER = ['duburi', 'dubomini', 'barracuda', 'kraken', 'manta'];
 export const PLAYER_COLORS = ['#ffb547', '#4fd1c5', '#f56565', '#9f7aea', '#68d391', '#63b3ed', '#f6e05e', '#ed64a6'];

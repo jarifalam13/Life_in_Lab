@@ -1,4 +1,4 @@
-// Browser smoke test of the built game (dist/duburi-robosub.html) with the
+// Browser smoke test of the built game (dist/life-as-duburi.html) with the
 // pre-installed Chromium: menus, every water scenario, 1 and 4 players,
 // keyboard flying, CPU runs, console errors and frame rate. Screenshots go
 // to the directory given as the first argument.
@@ -14,7 +14,7 @@ const here = dirname(fileURLToPath(import.meta.url));
 const { chromium } = createRequire(import.meta.url)('playwright');
 const out = process.argv[2] || join(here, '../dist/e2e');
 mkdirSync(out, { recursive: true });
-const url = pathToFileURL(process.env.GAME_HTML || join(here, '../dist/duburi-robosub.html')).href;
+const url = pathToFileURL(process.env.GAME_HTML || join(here, '../dist/life-as-duburi.html')).href;
 
 const browser = await chromium.launch({ args: ['--use-angle=swiftshader', '--enable-unsafe-swiftshader', '--ignore-gpu-blocklist', '--autoplay-policy=no-user-gesture-required'] });
 const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
@@ -87,7 +87,7 @@ results.push({ test: '1P + 3 CPU', fps: +(await fps()).toFixed(1), ...(await sta
 await toMenu();
 
 // --- four local players split screen ---
-await setup([{ type: 'kbA', bot: 'duburi' }, { type: 'kbB', bot: 'barracuda' }, { type: 'pad0', bot: 'kraken' }, { type: 'pad1', bot: 'minnow' }], 'pacific');
+await setup([{ type: 'kbA', bot: 'duburi' }, { type: 'kbB', bot: 'barracuda' }, { type: 'pad0', bot: 'kraken' }, { type: 'pad1', bot: 'dubomini' }], 'pacific');
 await holdSim(['KeyF', 'KeyK'], 2.0);
 await holdSim(['KeyW', 'ArrowUp', 'KeyD', 'ArrowRight'], 1.5);
 await shot('30-4p-split');
@@ -97,7 +97,7 @@ if (!(s4.players[1].depth > 0.8)) errors.push('keyboard B did not dive player 2'
 await toMenu();
 
 // --- three players: spectator quadrant ---
-await setup([{ type: 'kbA', bot: 'manta' }, { type: 'kbB', bot: 'minnow' }, { type: 'pad0', bot: 'duburi' }], 'arctic');
+await setup([{ type: 'kbA', bot: 'manta' }, { type: 'kbB', bot: 'dubomini' }, { type: 'pad0', bot: 'duburi' }], 'arctic');
 await holdSim(['KeyF', 'KeyK'], 1.5);
 await shot('31-3p-spectator');
 await toMenu();
@@ -110,13 +110,59 @@ await page.waitForSelector('table.results', { timeout: 10000 });
 await shot('40-results');
 results.push({ test: 'CPU full run (Atlantic)', ...(await state()) });
 
-// --- pause menu ---
+// --- pause menu: skip a task from the menu (keyboard navigation) ---
 await page.click('[data-a=again]');
 await page.waitForSelector('.hud');
 await wait(800);
 await page.keyboard.press('Escape');
-await wait(400);
+await page.waitForSelector('.pause-menu');
+await wait(300);
 await shot('41-pause');
+await page.keyboard.press('ArrowDown'); // Resume -> Skip task
+await page.keyboard.press('Enter');
+await wait(500);
+const sk = await page.evaluate(() => { const a = window.__duburi, g = a.game, p = g.players[0]; return { paused: a.paused, task: g.currentTask(p), skipped: [...(p.run.skipped || [])] }; });
+results.push({ test: 'pause menu → skip task', ...sk });
+if (sk.paused || sk.task !== 'slalom' || !sk.skipped.includes('gate')) errors.push(`skip from the pause menu did not work: ${JSON.stringify(sk)}`);
+await toMenu();
+
+// --- lobby: join with the keyboards, then one player leaves mid-match ---
+await page.evaluate(() => { const m = window.__duburi.menu; m.setup.slots.forEach((s) => (s.type = 'off')); m.show('setup'); });
+await wait(300);
+await page.keyboard.press('Space'); // left keyboard joins
+await page.keyboard.press('Enter'); // right keyboard joins
+await wait(300);
+const joined = await page.evaluate(() => window.__duburi.menu.setup.slots.map((s) => s.type));
+results.push({ test: 'lobby join (Space / Enter)', joined });
+if (joined[0] !== 'kbA' || joined[1] !== 'kbB') errors.push(`keyboard join failed: ${joined}`);
+await page.keyboard.press('KeyD'); // P1 next vehicle
+await wait(300);
+await shot('03-lobby');
+await page.click('[data-a=start]');
+await page.waitForSelector('.hud');
+await holdSim(['KeyF', 'KeyK'], 1.0);
+await shot('32-2p-split');
+await page.keyboard.press('Backspace'); // P2's pause menu
+await page.waitForSelector('.pause-menu');
+const items = await page.$$eval('.pause-menu .mi', (els) => els.map((e) => e.dataset.a));
+const leaveIdx = items.indexOf('leave');
+for (let k = 0; k < leaveIdx; k++) await page.keyboard.press('ArrowDown');
+await page.keyboard.press('Enter');
+await wait(600);
+const lv = await page.evaluate(() => { const a = window.__duburi; return { views: a.views.length, left: a.game.players.map((p) => !!p.left), running: a.game.players[0].run.state }; });
+results.push({ test: 'player 2 leaves', ...lv });
+if (lv.views !== 1 || !lv.left[1] || lv.running !== 'running') errors.push(`leave failed: ${JSON.stringify(lv)}`);
+await waitSim(1);
+await shot('33-after-leave');
+await page.keyboard.press('Escape');
+await page.waitForSelector('.pause-menu');
+const items2 = await page.$$eval('.pause-menu .mi', (els) => els.map((e) => e.dataset.a));
+for (let k = 0; k < items2.indexOf('forfeit'); k++) await page.keyboard.press('ArrowDown');
+await page.keyboard.press('Enter');
+await wait(400);
+const ff = await page.evaluate(() => { const g = window.__duburi.game, p = g.players[0]; return { run: p.run.state, total: g.total(p), x: p.veh.p[0] }; });
+results.push({ test: 'forfeit run', ...ff });
+if (ff.run !== 'running' || ff.total !== 0) errors.push(`forfeit failed: ${JSON.stringify(ff)}`);
 
 console.log(JSON.stringify({ results, errors }, null, 2));
 await browser.close();

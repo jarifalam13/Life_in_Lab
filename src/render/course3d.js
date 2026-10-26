@@ -1,4 +1,4 @@
-// three.js meshes for the RoboSub 2025 course elements (gate, path markers,
+// three.js meshes for the competition course elements (gate, path markers,
 // slalom, bin, torpedo board, octagon with table / baskets, pingers, dock).
 // World mapping: NED (x north, y east, z down) -> three (east, up, south).
 

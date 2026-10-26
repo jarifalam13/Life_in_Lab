@@ -185,3 +185,38 @@ table.results .dot { display: inline-block; width: 10px; height: 10px; border-ra
 .pp.small .task.done { display: grid; }
 .pp.small .pp-tr .row:nth-child(n+3) { display: none; }
 .pp.small .att { width: 48px; height: 48px; }
+
+/* ---------- Life as Duburi: lobby, pause menu, leaderboard ---------- */
+.press { color: #cfe6f0; font-size: 14px; margin: 0 0 10px; text-shadow: 0 1px 6px #000; animation: blink 1.6s ease-in-out infinite; }
+@keyframes blink { 50% { opacity: 0.45; } }
+.pad-btn { display: inline-block; font-family: var(--mono); font-size: 12px; padding: 1px 7px; border-radius: 10px; background: rgba(255, 255, 255, 0.12); border: 1px solid var(--line); white-space: nowrap; }
+.join-bar { margin: 12px 0; padding: 10px 12px; border-radius: 10px; background: rgba(58, 160, 224, 0.12); border: 1px solid rgba(58, 160, 224, 0.35); font-size: 13px; line-height: 1.9; }
+.slot.on { box-shadow: 0 0 0 1px var(--pc) inset, 0 6px 24px rgba(0, 0, 0, 0.25); }
+.join-hint { text-align: center; padding: 6px; border: 1px dashed var(--line); border-radius: 8px; color: var(--mut); font-size: 13px; animation: blink 1.6s ease-in-out infinite; }
+.ready { color: var(--pc); font-weight: 700; font-size: 13px; letter-spacing: 0.08em; }
+.menu-flash { position: absolute; bottom: 30px; left: 50%; transform: translateX(-50%); background: rgba(3, 16, 24, 0.92); border: 1px solid var(--acc); padding: 10px 18px; border-radius: 10px; color: var(--acc); }
+.overlay header .pdot { width: 14px; height: 14px; border-radius: 50%; background: var(--pc); box-shadow: 0 0 12px var(--pc); }
+.overlay header .sub { color: var(--mut); font-size: 14px; }
+.overlay header { border-bottom-color: var(--pc, var(--line)); }
+.pause-menu { display: flex; flex-direction: column; gap: 6px; margin: 14px 0 6px; max-width: 520px; }
+.mi { text-align: left; background: rgba(255, 255, 255, 0.05); border: 1px solid var(--line); border-radius: 10px; color: var(--text); padding: 10px 14px; cursor: pointer; display: flex; flex-direction: column; gap: 2px; font-family: inherit; transition: background 0.12s, transform 0.12s, border-color 0.12s; }
+.mi b { font-size: 17px; }
+.mi small { color: var(--mut); font-size: 12px; }
+.mi.primary b { color: var(--acc); }
+.mi.warn b { color: #ffd38c; }
+.mi.bad b { color: var(--bad); }
+.mi.focus, .mi:hover, .mi:focus-visible { background: rgba(255, 255, 255, 0.13); border-color: var(--acc); transform: translateX(6px); outline: none; }
+.btn.focus { outline: 2px solid var(--acc); outline-offset: 2px; }
+.nav-hint { margin: 4px 0 12px; }
+.overlay details { margin: 8px 0; }
+.overlay summary { cursor: pointer; color: var(--acc); font-weight: 600; }
+.lboard { position: absolute; display: grid; place-items: end start; padding: 14px; pointer-events: none; }
+.lboard[hidden] { display: none; }
+.lb-in { background: rgba(3, 16, 24, 0.78); border: 1px solid var(--line); border-radius: 12px; padding: 10px 14px; min-width: 260px; }
+.lb-in h3 { margin: 0 0 6px; font-size: 15px; color: var(--acc); letter-spacing: 0.06em; text-transform: uppercase; }
+.lb-in table { border-collapse: collapse; width: 100%; font-size: 13px; }
+.lb-in td { padding: 4px 6px; border-bottom: 1px solid rgba(255, 255, 255, 0.06); }
+.lb-in td:last-child { text-align: right; font-family: var(--mono); color: var(--pc); }
+.lb-in td small { display: block; color: var(--mut); font-size: 11px; }
+.lb-in .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: var(--pc); margin-right: 6px; }
+.lb-in p { margin: 6px 0 0; font-size: 11px; color: var(--mut); }
